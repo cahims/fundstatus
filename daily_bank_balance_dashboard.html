@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Bank Balance Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f5f7; color: #1a1a2e; font-size: 14px; }
+
+  /* Top Nav */
+  .topbar { background: #fff; border-bottom: 1px solid #e2e4e9; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100; }
+  .topbar-left { display: flex; align-items: center; gap: 16px; }
+  .logo { font-size: 16px; font-weight: 700; color: #1a1a2e; letter-spacing: -0.3px; }
+  .logo span { color: #2563eb; }
+  .date-badge { background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .btn { padding: 7px 14px; border-radius: 7px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; display: flex; align-items: center; gap: 6px; transition: all 0.15s; }
+  .btn-ghost { background: transparent; color: #64748b; border: 1px solid #e2e4e9; }
+  .btn-ghost:hover { background: #f8fafc; }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-success { background: #16a34a; color: #fff; }
+  .btn-success:hover { background: #15803d; }
+  .btn-orange { background: #ea580c; color: #fff; }
+  .btn-orange:hover { background: #c2410c; }
+  .user-chip { display: flex; align-items: center; gap: 8px; padding: 5px 10px; background: #f8fafc; border-radius: 20px; border: 1px solid #e2e4e9; cursor: pointer; font-size: 13px; font-weight: 500; }
+  .avatar { width: 26px; height: 26px; border-radius: 50%; background: #2563eb; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+
+  /* Layout */
+  .main { max-width: 1400px; margin: 0 auto; padding: 24px; }
+  .section-title { font-size: 13px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+
+  /* Summary Cards */
+  .metric-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
+  .metric-card { background: #fff; border-radius: 10px; padding: 16px; border: 1px solid #e2e4e9; }
+  .metric-label { font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px; }
+  .metric-value { font-size: 22px; font-weight: 700; color: #1a1a2e; }
+  .metric-sub { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+  .metric-up { color: #16a34a; }
+  .metric-down { color: #dc2626; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 2px; background: #f1f5f9; padding: 4px; border-radius: 8px; margin-bottom: 20px; width: fit-content; }
+  .tab { padding: 7px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; color: #64748b; transition: all 0.15s; }
+  .tab.active { background: #fff; color: #1a1a2e; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+
+  /* Data Table */
+  .table-wrap { background: #fff; border-radius: 10px; border: 1px solid #e2e4e9; overflow: hidden; margin-bottom: 24px; }
+  .table-toolbar { padding: 14px 16px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .table-toolbar-left { display: flex; align-items: center; gap: 10px; }
+  .search-box { display: flex; align-items: center; gap: 8px; background: #f8fafc; border: 1px solid #e2e4e9; border-radius: 7px; padding: 7px 12px; }
+  .search-box input { border: none; background: transparent; font-size: 13px; color: #1a1a2e; outline: none; width: 180px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead { background: #f8fafc; }
+  th { padding: 10px 12px; text-align: right; font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1px solid #e2e4e9; white-space: nowrap; }
+  th:first-child { text-align: left; }
+  td { padding: 10px 12px; text-align: right; border-bottom: 1px solid #f1f5f9; color: #334155; }
+  td:first-child { text-align: left; font-weight: 600; color: #1a1a2e; }
+  tr:last-child td { border-bottom: none; }
+  tr.total-row { background: #f0f7ff; }
+  tr.total-row td { font-weight: 700; color: #1a1a2e; border-top: 2px solid #2563eb; border-bottom: none; }
+  tr:hover:not(.total-row) td { background: #fafbff; }
+  .movement-pos { color: #16a34a; font-weight: 600; }
+  .movement-neg { color: #dc2626; font-weight: 600; }
+  .movement-zero { color: #94a3b8; }
+  .editable-cell { background: transparent; border: none; font-size: 13px; text-align: right; width: 80px; color: #334155; outline: none; font-family: inherit; }
+  .editable-cell:focus { background: #eff6ff; border-radius: 4px; padding: 2px 4px; }
+  td.edit-col { padding: 6px 8px; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .status-done { background: #16a34a; }
+  .status-pending { background: #f59e0b; }
+
+  /* Charts */
+  .chart-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .chart-card { background: #fff; border-radius: 10px; border: 1px solid #e2e4e9; padding: 16px; }
+  .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .chart-title { font-size: 14px; font-weight: 600; color: #1a1a2e; }
+  .chart-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+  /* Data Entry Panel */
+  .entry-panel { background: #fff; border-radius: 10px; border: 1px solid #e2e4e9; padding: 20px; margin-bottom: 24px; }
+  .entry-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-label { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px; }
+  .form-input { padding: 8px 10px; border: 1px solid #e2e4e9; border-radius: 7px; font-size: 13px; color: #1a1a2e; outline: none; transition: border 0.15s; font-family: inherit; }
+  .form-input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+  select.form-input { cursor: pointer; }
+  .entry-actions { display: flex; gap: 10px; margin-top: 16px; }
+
+  /* Email Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #fff; border-radius: 12px; width: 480px; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+  .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .modal-sub { font-size: 13px; color: #64748b; margin-bottom: 20px; }
+  .modal-field { margin-bottom: 14px; }
+  .modal-field label { display: block; font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .modal-field input, .modal-field textarea { width: 100%; padding: 9px 12px; border: 1px solid #e2e4e9; border-radius: 7px; font-size: 13px; outline: none; font-family: inherit; }
+  .modal-field input:focus, .modal-field textarea:focus { border-color: #2563eb; }
+  .modal-field textarea { height: 80px; resize: vertical; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .tag { background: #eff6ff; color: #2563eb; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; display: flex; align-items: center; gap: 5px; }
+  .tag button { background: none; border: none; color: #2563eb; cursor: pointer; font-size: 14px; line-height: 1; padding: 0; }
+
+  /* Status bar */
+  .status-bar { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; font-size: 13px; color: #166534; display: none; }
+  .status-bar.show { display: flex; }
+  .status-bar.error { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+
+  /* Submission status table */
+  .sub-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+  .sub-card { background: #f8fafc; border-radius: 8px; padding: 10px 12px; border: 1px solid #e2e4e9; }
+  .sub-entity { font-weight: 600; font-size: 13px; }
+  .sub-status { font-size: 11px; color: #64748b; margin-top: 3px; display: flex; align-items: center; gap: 4px; }
+
+  @media (max-width: 900px) {
+    .metric-row { grid-template-columns: repeat(2, 1fr); }
+    .chart-grid { grid-template-columns: 1fr; }
+    .entry-grid { grid-template-columns: repeat(2, 1fr); }
+    .sub-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- Top Navigation -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">Bank<span>Balance</span> Hub</div>
+    <div class="date-badge" id="today-badge"></div>
+  </div>
+  <div class="topbar-right">
+    <div class="user-chip" onclick="showUserSelect()">
+      <div class="avatar" id="user-avatar">AD</div>
+      <span id="user-name-display">Admin</span>
+      <span style="color:#94a3b8;font-size:12px;">▾</span>
+    </div>
+    <button class="btn btn-ghost" onclick="exportExcel()">⬇ Export Excel</button>
+    <button class="btn btn-orange" onclick="openEmailModal()">✉ Send Report</button>
+  </div>
+</div>
+
+<!-- User Select Modal -->
+<div class="modal-overlay" id="user-modal">
+  <div class="modal" style="width:360px;">
+    <div class="modal-title">Select Your Profile</div>
+    <div class="modal-sub">Choose your entity to enter data</div>
+    <div id="user-list" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeUserModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Email Modal -->
+<div class="modal-overlay" id="email-modal">
+  <div class="modal">
+    <div class="modal-title">Send Daily Balance Report</div>
+    <div class="modal-sub">Report will include the full consolidated balance table & charts</div>
+    <div class="modal-field">
+      <label>Recipients</label>
+      <input type="email" id="email-input" placeholder="Add email and press Enter" onkeydown="addEmail(event)">
+      <div class="tag-row" id="email-tags"></div>
+    </div>
+    <div class="modal-field">
+      <label>Subject</label>
+      <input type="text" id="email-subject" value="">
+    </div>
+    <div class="modal-field">
+      <label>Message</label>
+      <textarea id="email-body">Please find the Daily Bank Balance Report attached. All figures are in Crores (₹).</textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeEmailModal()">Cancel</button>
+      <button class="btn btn-success" onclick="sendReport()">✉ Send Now</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="status-bar" id="status-bar"></div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('dashboard', this)">📊 Dashboard</div>
+    <div class="tab" onclick="switchTab('entry', this)">✏️ Data Entry</div>
+    <div class="tab" onclick="switchTab('status', this)">✅ Submission Status</div>
+  </div>
+
+  <!-- DASHBOARD TAB -->
+  <div id="tab-dashboard">
+    <!-- Metric Cards -->
+    <div class="metric-row" id="metric-row"></div>
+
+    <!-- Charts -->
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Total Balance by Entity</div>
+            <div class="chart-sub">Consolidated view · ₹ Crores</div>
+          </div>
+        </div>
+        <div style="position:relative;height:260px;"><canvas id="barChart" role="img" aria-label="Bar chart of total balance by entity"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">Fund Composition</div>
+            <div class="chart-sub">Liquid · Treasury · Investment</div>
+          </div>
+        </div>
+        <div style="position:relative;height:220px;"><canvas id="doughnut" role="img" aria-label="Doughnut chart of fund composition"></canvas></div>
+        <div id="donut-legend" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;font-size:12px;color:#64748b;justify-content:center;"></div>
+      </div>
+    </div>
+
+    <!-- Main Table -->
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <div class="table-toolbar-left">
+          <div class="section-title" style="margin:0;">Daily Bank Balance — <span id="table-date"></span></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <div class="search-box">
+            <span style="color:#94a3b8;">🔍</span>
+            <input type="text" placeholder="Search entity..." oninput="filterTable(this.value)">
+          </div>
+        </div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table id="main-table">
+          <thead>
+            <tr>
+              <th>Entity</th>
+              <th>Bank (a)</th>
+              <th>Sweep TD (b)</th>
+              <th>FD (c)</th>
+              <th>Investment (d)</th>
+              <th>BRS (e)</th>
+              <th>Liquid (f=a+b+e)</th>
+              <th>Liquid & MF (g)</th>
+              <th>Treasury (h=c+d)</th>
+              <th>Reserve Fund (i)</th>
+              <th>Total (j)</th>
+              <th>Movement</th>
+            </tr>
+          </thead>
+          <tbody id="main-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- DATA ENTRY TAB -->
+  <div id="tab-entry" style="display:none;">
+    <div class="entry-panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:15px;font-weight:700;margin-bottom:3px;">Enter / Update Balance Data</div>
+          <div style="font-size:12px;color:#64748b;">Figures in ₹ Crores · All fields accept negative values</div>
+        </div>
+        <div style="font-size:12px;color:#2563eb;font-weight:600;background:#eff6ff;padding:6px 12px;border-radius:20px;">
+          Logged in as: <span id="entry-user-label">—</span>
+        </div>
+      </div>
+      <div class="entry-grid">
+        <div class="form-group">
+          <label class="form-label">Entity</label>
+          <select class="form-input" id="entry-entity">
+            <option value="">Select Entity</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input type="date" class="form-input" id="entry-date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Bank (a)</label>
+          <input type="number" step="0.01" class="form-input" id="f-bank" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sweep TD (b)</label>
+          <input type="number" step="0.01" class="form-input" id="f-sweep" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">FD (c)</label>
+          <input type="number" step="0.01" class="form-input" id="f-fd" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Investment (d)</label>
+          <input type="number" step="0.01" class="form-input" id="f-inv" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">BRS (e)</label>
+          <input type="number" step="0.01" class="form-input" id="f-brs" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Liquid & MF / ANA (g)</label>
+          <input type="number" step="0.01" class="form-input" id="f-ana" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Reserve Fund (i)</label>
+          <input type="number" step="0.01" class="form-input" id="f-reserve" placeholder="0.00">
+        </div>
+        <div class="form-group" style="justify-content:flex-end;">
+          <label class="form-label">Computed Preview</label>
+          <div style="background:#f0f7ff;border-radius:7px;padding:8px 10px;font-size:12px;color:#1e40af;font-weight:600;" id="preview-total">Total: —</div>
+        </div>
+      </div>
+      <div class="entry-actions">
+        <button class="btn btn-primary" onclick="saveEntry()">💾 Save Entry</button>
+        <button class="btn btn-ghost" onclick="clearForm()">✕ Clear</button>
+      </div>
+    </div>
+
+    <!-- Inline editable table -->
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <div class="section-title" style="margin:0;">All Entries — Edit Inline</div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Entity</th><th>Bank</th><th>Sweep TD</th><th>FD</th><th>Investment</th><th>BRS</th><th>Liquid & MF</th><th>Reserve</th><th>Total</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="entry-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUBMISSION STATUS TAB -->
+  <div id="tab-status" style="display:none;">
+    <div style="background:#fff;border-radius:10px;border:1px solid #e2e4e9;padding:20px;margin-bottom:20px;">
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px;">Today's Submission Status</div>
+      <div style="font-size:12px;color:#64748b;margin-bottom:16px;">Tracks which entities have submitted their daily data</div>
+      <div class="sub-grid" id="sub-grid"></div>
+    </div>
+    <div style="background:#fff;border-radius:10px;border:1px solid #e2e4e9;padding:20px;">
+      <div style="font-size:15px;font-weight:700;margin-bottom:12px;">Submission Log</div>
+      <table style="width:100%;">
+        <thead><tr><th style="text-align:left;">Entity</th><th>Last Updated</th><th>Total (₹ Cr)</th><th>Status</th></tr></thead>
+        <tbody id="log-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA STORE (localStorage) ──────────────────────────────────────────────
+const ENTITIES = ['MAIA','MEIPL','MEOPL','MLS','MLSIPL','NHD','JGD','JVDPL','RDL','NHEPL','NHBPL','NHRPL','NPDLLP','PPEPL','NYPL','SGELLP','SGRPL'];
+
+const USERS = [
+  {id:'admin', name:'Admin', avatar:'AD', entity: null},
+  {id:'maia', name:'MAIA Admin', avatar:'MA', entity:'MAIA'},
+  {id:'meipl', name:'MEIPL Admin', avatar:'ME', entity:'MEIPL'},
+  {id:'meopl', name:'MEOPL Admin', avatar:'MO', entity:'MEOPL'},
+  {id:'mls', name:'MLS Admin', avatar:'ML', entity:'MLS'},
+  {id:'nhdadm', name:'NHD Admin', avatar:'NH', entity:'NHD'},
+  {id:'jgd', name:'JGD Admin', avatar:'JG', entity:'JGD'},
+  {id:'nhepl', name:'NHEPL Admin', avatar:'NE', entity:'NHEPL'},
+  {id:'nhrpl', name:'NHRPL Admin', avatar:'NR', entity:'NHRPL'},
+  {id:'sgrpl', name:'SGRPL Admin', avatar:'SG', entity:'SGRPL'},
+];
+
+// Default seed data from image
+const DEFAULT_DATA = {
+  MAIA:   {bank:0.18, sweep:0, fd:13.75, inv:61.81, brs:0.55, ana:0.73, reserve:0},
+  MEIPL:  {bank:2.33, sweep:0, fd:0, inv:0, brs:-0.04, ana:0, reserve:0},
+  MEOPL:  {bank:0.09, sweep:0.08, fd:0, inv:7.86, brs:0, ana:0.17, reserve:7.86},
+  MLS:    {bank:0.20, sweep:0, fd:0, inv:0, brs:-0.04, ana:0.16, reserve:0},
+  MLSIPL: {bank:2.98, sweep:4.10, fd:0, inv:0, brs:0, ana:7.09, reserve:0},
+  NHD:    {bank:8.32, sweep:1.20, fd:0.25, inv:9.34, brs:-0.92, ana:8.60, reserve:1.05},
+  JGD:    {bank:0.09, sweep:0, fd:0, inv:0, brs:0, ana:0.09, reserve:0},
+  JVDPL:  {bank:0.85, sweep:7.01, fd:0, inv:11.45, brs:-0.17, ana:7.68, reserve:0},
+  RDL:    {bank:0.01, sweep:0.41, fd:0, inv:17.04, brs:-0.00, ana:0.42, reserve:0},
+  NHEPL:  {bank:7.65, sweep:0.03, fd:0, inv:5.11, brs:-0.19, ana:7.49, reserve:0},
+  NHBPL:  {bank:0.00, sweep:0, fd:0, inv:0, brs:0, ana:0.00, reserve:0},
+  NHRPL:  {bank:1.50, sweep:2.66, fd:0, inv:0, brs:-0.21, ana:3.95, reserve:0},
+  NPDLLP: {bank:0.01, sweep:0, fd:0, inv:0, brs:0, ana:0.01, reserve:0},
+  PPEPL:  {bank:0.01, sweep:0, fd:0, inv:0, brs:0, ana:0.01, reserve:0},
+  NYPL:   {bank:2.07, sweep:0, fd:0, inv:0, brs:-1.14, ana:0.93, reserve:0},
+  SGELLP: {bank:0, sweep:0, fd:0, inv:0, brs:0, ana:0, reserve:0},
+  SGRPL:  {bank:0.30, sweep:4.31, fd:0, inv:9.08, brs:-0.00, ana:4.61, reserve:0},
+};
+
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+function getStorageKey(date) { return 'bbdata_' + date; }
+function loadData(date) {
+  const raw = localStorage.getItem(getStorageKey(date));
+  if (raw) return JSON.parse(raw);
+  if (date === todayStr()) return JSON.parse(JSON.stringify(DEFAULT_DATA));
+  return {};
+}
+function saveData(date, data) {
+  localStorage.setItem(getStorageKey(date), JSON.stringify(data));
+}
+function getSubmissions(date) {
+  const raw = localStorage.getItem('bbsubs_' + date);
+  return raw ? JSON.parse(raw) : {};
+}
+function markSubmission(date, entity) {
+  const s = getSubmissions(date);
+  s[entity] = new Date().toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'});
+  localStorage.setItem('bbsubs_' + date, JSON.stringify(s));
+}
+
+// ── COMPUTED FIELDS ─────────────────────────────────────────────────────────
+function compute(r) {
+  const liquid = +(r.bank + r.sweep + r.brs).toFixed(2);
+  const treasury = +(r.fd + r.inv).toFixed(2);
+  const total = +(liquid + r.ana + treasury + r.reserve).toFixed(2);
+  return { liquid, treasury, total };
+}
+
+// ── CURRENT STATE ───────────────────────────────────────────────────────────
+let currentUser = USERS[0];
+let currentDate = todayStr();
+let emailList = [];
+let barChartInst, doughnutInst;
+
+// ── INIT ────────────────────────────────────────────────────────────────────
+window.onload = function() {
+  document.getElementById('today-badge').textContent = formatDate(currentDate);
+  document.getElementById('table-date').textContent = formatDate(currentDate);
+  document.getElementById('entry-date').value = currentDate;
+  document.getElementById('email-subject').value = 'Daily Bank Balance Report — ' + formatDate(currentDate);
+  populateEntitySelect();
+  populateUserList();
+  renderAll();
+  // Live preview
+  ['f-bank','f-sweep','f-fd','f-inv','f-brs','f-ana','f-reserve'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updatePreview);
+  });
+};
+
+function formatDate(d) {
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
+}
+
+function populateEntitySelect() {
+  const sel = document.getElementById('entry-entity');
+  ENTITIES.forEach(e => { sel.innerHTML += `<option value="${e}">${e}</option>`; });
+}
+
+function populateUserList() {
+  const ul = document.getElementById('user-list');
+  ul.innerHTML = '';
+  USERS.forEach(u => {
+    ul.innerHTML += `<div onclick="selectUser('${u.id}')" style="background:#f8fafc;border:1px solid #e2e4e9;border-radius:8px;padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background 0.15s;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#f8fafc'">
+      <div class="avatar" style="background:${u.id==='admin'?'#7c3aed':'#2563eb'}">${u.avatar}</div>
+      <div><div style="font-weight:600;font-size:13px;">${u.name}</div><div style="font-size:11px;color:#94a3b8;">${u.entity||'All entities'}</div></div>
+    </div>`;
+  });
+}
+
+function selectUser(id) {
+  currentUser = USERS.find(u => u.id === id);
+  document.getElementById('user-avatar').textContent = currentUser.avatar;
+  document.getElementById('user-name-display').textContent = currentUser.name;
+  document.getElementById('entry-user-label').textContent = currentUser.name;
+  if (currentUser.entity) document.getElementById('entry-entity').value = currentUser.entity;
+  closeUserModal();
+}
+
+// ── RENDER ALL ──────────────────────────────────────────────────────────────
+function renderAll() {
+  const data = loadData(currentDate);
+  renderMetrics(data);
+  renderTable(data);
+  renderCharts(data);
+  renderEntryTable(data);
+  renderStatusTab(data);
+}
+
+function renderMetrics(data) {
+  let totalBal = 0, totalLiq = 0, totalTreasury = 0, totalInv = 0, totalAna = 0;
+  ENTITIES.forEach(e => {
+    const r = data[e] || {bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
+    const c = compute(r);
+    totalBal += c.total;
+    totalLiq += c.liquid;
+    totalTreasury += c.treasury;
+    totalInv += r.inv;
+    totalAna += r.ana;
+  });
+  const mr = document.getElementById('metric-row');
+  const cards = [
+    {label:'Total Balance', val:'₹ '+totalBal.toFixed(2)+' Cr', sub:'All entities combined'},
+    {label:'Liquid Funds', val:'₹ '+totalLiq.toFixed(2)+' Cr', sub:'Bank + Sweep + BRS'},
+    {label:'Treasury', val:'₹ '+totalTreasury.toFixed(2)+' Cr', sub:'FD + Investment'},
+    {label:'Liquid & MF (ANA)', val:'₹ '+totalAna.toFixed(2)+' Cr', sub:'ANA funds'},
+    {label:'Entities Tracked', val:ENTITIES.length, sub:getSubmissions(currentDate) && Object.keys(getSubmissions(currentDate)).length+' submitted today'},
+  ];
+  mr.innerHTML = cards.map(c => `<div class="metric-card"><div class="metric-label">${c.label}</div><div class="metric-value">${c.val}</div><div class="metric-sub">${c.sub}</div></div>`).join('');
+}
+
+function renderTable(data) {
+  const tbody = document.getElementById('main-tbody');
+  let totals = {bank:0,sweep:0,fd:0,inv:0,brs:0,liquid:0,ana:0,treasury:0,reserve:0,total:0};
+  let rows = '';
+  ENTITIES.forEach(e => {
+    const r = data[e] || {bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
+    const c = compute(r);
+    const mov = r.movement || 0;
+    totals.bank += r.bank; totals.sweep += r.sweep; totals.fd += r.fd;
+    totals.inv += r.inv; totals.brs += r.brs; totals.liquid += c.liquid;
+    totals.ana += r.ana; totals.treasury += c.treasury; totals.reserve += r.reserve;
+    totals.total += c.total;
+    const mClass = mov > 0 ? 'movement-pos' : mov < 0 ? 'movement-neg' : 'movement-zero';
+    const mText = mov === 0 ? '-' : (mov > 0 ? '+' : '') + mov.toFixed(2);
+    rows += `<tr data-entity="${e}">
+      <td>${e}</td>
+      <td>${r.bank.toFixed(2)}</td>
+      <td>${r.sweep.toFixed(2)}</td>
+      <td>${r.fd.toFixed(2)}</td>
+      <td>${r.inv.toFixed(2)}</td>
+      <td>${r.brs.toFixed(2)}</td>
+      <td>${c.liquid.toFixed(2)}</td>
+      <td>${r.ana.toFixed(2)}</td>
+      <td>${c.treasury.toFixed(2)}</td>
+      <td>${r.reserve.toFixed(2)}</td>
+      <td><strong>${c.total.toFixed(2)}</strong></td>
+      <td class="${mClass}">${mText}</td>
+    </tr>`;
+  });
+  rows += `<tr class="total-row">
+    <td>Total</td>
+    <td>${totals.bank.toFixed(2)}</td>
+    <td>${totals.sweep.toFixed(2)}</td>
+    <td>${totals.fd.toFixed(2)}</td>
+    <td>${totals.inv.toFixed(2)}</td>
+    <td>${totals.brs.toFixed(2)}</td>
+    <td>${totals.liquid.toFixed(2)}</td>
+    <td>${totals.ana.toFixed(2)}</td>
+    <td>${totals.treasury.toFixed(2)}</td>
+    <td>${totals.reserve.toFixed(2)}</td>
+    <td>${totals.total.toFixed(2)}</td>
+    <td>—</td>
+  </tr>`;
+  tbody.innerHTML = rows;
+}
+
+function renderCharts(data) {
+  const labels = [], totals = [], liquids = [], treasuries = [], anas = [];
+  ENTITIES.forEach(e => {
+    const r = data[e] || {bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
+    const c = compute(r);
+    if (c.total > 0) { labels.push(e); totals.push(c.total); liquids.push(c.liquid); treasuries.push(c.treasury); anas.push(r.ana); }
+  });
+  // Bar chart
+  if (barChartInst) barChartInst.destroy();
+  barChartInst = new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {label:'Liquid', data: liquids, backgroundColor:'#93c5fd', borderRadius:4},
+        {label:'Treasury', data: treasuries, backgroundColor:'#2563eb', borderRadius:4},
+        {label:'Liquid & MF', data: anas, backgroundColor:'#1e40af', borderRadius:4},
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { stacked: true, grid:{display:false}, ticks:{font:{size:10}} }, y: { stacked: true, grid:{color:'#f1f5f9'}, ticks:{font:{size:10}} } }
+    }
+  });
+  // Doughnut
+  let sumLiq = liquids.reduce((a,b)=>a+b,0);
+  let sumTreas = treasuries.reduce((a,b)=>a+b,0);
+  let sumAna = anas.reduce((a,b)=>a+b,0);
+  if (doughnutInst) doughnutInst.destroy();
+  doughnutInst = new Chart(document.getElementById('doughnut'), {
+    type: 'doughnut',
+    data: {
+      labels:['Liquid','Treasury','Liquid & MF'],
+      datasets:[{data:[sumLiq,sumTreas,sumAna], backgroundColor:['#93c5fd','#2563eb','#1e40af'], borderWidth:0, hoverOffset:6}]
+    },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, cutout:'65%' }
+  });
+  const total = sumLiq + sumTreas + sumAna;
+  document.getElementById('donut-legend').innerHTML = [
+    {label:'Liquid', color:'#93c5fd', val:sumLiq},
+    {label:'Treasury', color:'#2563eb', val:sumTreas},
+    {label:'Liquid & MF', color:'#1e40af', val:sumAna},
+  ].map(l => `<span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:${l.color};"></span>${l.label} ${total>0?(l.val/total*100).toFixed(1)+'%':''}</span>`).join('');
+}
+
+function renderEntryTable(data) {
+  const tbody = document.getElementById('entry-tbody');
+  tbody.innerHTML = ENTITIES.map(e => {
+    const r = data[e] || {bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
+    const c = compute(r);
+    return `<tr>
+      <td>${e}</td>
+      <td class="edit-col"><input class="editable-cell" type="number" step="0.01" value="${r.bank}" onchange="inlineUpdate('${e}','bank',this.value)"></td>
+      <td class="edit-col"><input class="editable-cell" type="number" step="0.01" value="${r.sweep}" onchange="inlineUpdate('${e}','sweep',this.value)"></td>
+      <td class="edit-col"><input class="editable-cell" type="number" step="0.01" value="${r.fd}" onchange="inlineUpdate('${e}','fd',this.value)"></td>
+      <td class="edit-col"><input class="editable-cell" type="number" step="0.01" value="${r.inv}" onchange="inlineUpdate('${e}','inv',this.value)"></td>
+      <td class="edit-col"><input class="editable-cell" type="number" step="0.01" value="${r.brs}" onchange="inlineUpdate('${e}','brs',this.value)"></td>
+      <td class="edit-col"><input class="editable-cell" type="number" step="0.01" value="${r.ana}" onchange="inlineUpdate('${e}','ana',this.value)"></td>
+      <td class="edit-col"><input class="editable-cell" type="number" step="0.01" value="${r.reserve}" onchange="inlineUpdate('${e}','reserve',this.value)"></td>
+      <td><strong>${c.total.toFixed(2)}</strong></td>
+      <td><button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;" onclick="deleteEntity('${e}')">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderStatusTab(data) {
+  const subs = getSubmissions(currentDate);
+  const grid = document.getElementById('sub-grid');
+  grid.innerHTML = ENTITIES.map(e => {
+    const done = !!subs[e];
+    return `<div class="sub-card">
+      <div class="sub-entity">${e}</div>
+      <div class="sub-status"><span class="status-dot ${done?'status-done':'status-pending'}"></span>${done ? '✓ Submitted '+subs[e] : 'Pending'}</div>
+    </div>`;
+  }).join('');
+  const log = document.getElementById('log-tbody');
+  log.innerHTML = ENTITIES.map(e => {
+    const r = data[e] || {bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
+    const c = compute(r);
+    const done = !!subs[e];
+    return `<tr>
+      <td>${e}</td>
+      <td style="text-align:right;">${subs[e]||'—'}</td>
+      <td style="text-align:right;">${c.total.toFixed(2)}</td>
+      <td style="text-align:right;"><span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${done?'#dcfce7':'#fef9c3'};color:${done?'#166534':'#713f12'}">${done?'Done':'Pending'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── INTERACTIONS ─────────────────────────────────────────────────────────────
+function inlineUpdate(entity, field, value) {
+  const data = loadData(currentDate);
+  if (!data[entity]) data[entity] = {bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
+  data[entity][field] = parseFloat(value)||0;
+  saveData(currentDate, data);
+  markSubmission(currentDate, entity);
+  renderAll();
+  showStatus('✓ '+entity+' updated successfully', false);
+}
+
+function deleteEntity(entity) {
+  const data = loadData(currentDate);
+  if (data[entity]) { data[entity] = {bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0}; }
+  saveData(currentDate, data);
+  renderAll();
+}
+
+function saveEntry() {
+  const entity = document.getElementById('entry-entity').value;
+  const date = document.getElementById('entry-date').value;
+  if (!entity) { showStatus('Please select an entity', true); return; }
+  const r = {
+    bank: parseFloat(document.getElementById('f-bank').value)||0,
+    sweep: parseFloat(document.getElementById('f-sweep').value)||0,
+    fd: parseFloat(document.getElementById('f-fd').value)||0,
+    inv: parseFloat(document.getElementById('f-inv').value)||0,
+    brs: parseFloat(document.getElementById('f-brs').value)||0,
+    ana: parseFloat(document.getElementById('f-ana').value)||0,
+    reserve: parseFloat(document.getElementById('f-reserve').value)||0,
+  };
+  const data = loadData(date);
+  data[entity] = r;
+  saveData(date, data);
+  markSubmission(date, entity);
+  renderAll();
+  showStatus('✓ Data saved for '+entity+' on '+formatDate(date), false);
+  clearForm();
+}
+
+function clearForm() {
+  ['f-bank','f-sweep','f-fd','f-inv','f-brs','f-ana','f-reserve'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('preview-total').textContent = 'Total: —';
+}
+
+function updatePreview() {
+  const bank = parseFloat(document.getElementById('f-bank').value)||0;
+  const sweep = parseFloat(document.getElementById('f-sweep').value)||0;
+  const fd = parseFloat(document.getElementById('f-fd').value)||0;
+  const inv = parseFloat(document.getElementById('f-inv').value)||0;
+  const brs = parseFloat(document.getElementById('f-brs').value)||0;
+  const ana = parseFloat(document.getElementById('f-ana').value)||0;
+  const reserve = parseFloat(document.getElementById('f-reserve').value)||0;
+  const c = compute({bank,sweep,fd,inv,brs,ana,reserve});
+  document.getElementById('preview-total').textContent = 'Total: ₹ ' + c.total.toFixed(2) + ' Cr';
+}
+
+function filterTable(q) {
+  document.querySelectorAll('#main-tbody tr').forEach(tr => {
+    const entity = tr.getAttribute('data-entity') || '';
+    tr.style.display = entity.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+
+function switchTab(tab, el) {
+  ['dashboard','entry','status'].forEach(t => document.getElementById('tab-'+t).style.display = 'none');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+tab).style.display = 'block';
+  el.classList.add('active');
+}
+
+// ── MODALS ───────────────────────────────────────────────────────────────────
+function showUserSelect() { document.getElementById('user-modal').classList.add('open'); }
+function closeUserModal() { document.getElementById('user-modal').classList.remove('open'); }
+function openEmailModal() { document.getElementById('email-modal').classList.add('open'); }
+function closeEmailModal() { document.getElementById('email-modal').classList.remove('open'); }
+
+function addEmail(e) {
+  if (e.key === 'Enter') {
+    const val = e.target.value.trim();
+    if (val && val.includes('@')) {
+      emailList.push(val);
+      renderEmailTags();
+      e.target.value = '';
+    }
+  }
+}
+function removeEmail(i) { emailList.splice(i,1); renderEmailTags(); }
+function renderEmailTags() {
+  document.getElementById('email-tags').innerHTML = emailList.map((e,i) =>
+    `<span class="tag">${e}<button onclick="removeEmail(${i})">×</button></span>`).join('');
+}
+
+function sendReport() {
+  if (emailList.length === 0) { showStatus('Please add at least one recipient email', true); closeEmailModal(); return; }
+  const subject = document.getElementById('email-subject').value;
+  const body = document.getElementById('email-body').value;
+  // Build mailto with report data
+  const data = loadData(currentDate);
+  let tableText = 'Daily Bank Balance Report — ' + formatDate(currentDate) + '\n\n';
+  tableText += 'Entity\tBank\tSweep TD\tFD\tInvestment\tBRS\tLiquid\tLiquid&MF\tTreasury\tReserve\tTotal\n';
+  ENTITIES.forEach(e => {
+    const r = data[e] || {bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
+    const c = compute(r);
+    tableText += `${e}\t${r.bank}\t${r.sweep}\t${r.fd}\t${r.inv}\t${r.brs}\t${c.liquid}\t${r.ana}\t${c.treasury}\t${r.reserve}\t${c.total}\n`;
+  });
+  const mailtoLink = `mailto:${emailList.join(',')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body+'\n\n'+tableText)}`;
+  window.open(mailtoLink);
+  closeEmailModal();
+  showStatus('✓ Email client opened with report for '+emailList.length+' recipient(s)', false);
+}
+
+// ── EXPORT EXCEL ─────────────────────────────────────────────────────────────
+function exportExcel() {
+  const data = loadData(currentDate);
+  const rows = [['Entity','Bank (a)','Sweep TD (b)','FD (c)','Investment (d)','BRS (e)','Liquid (f)','Liquid & MF (g)','Treasury (h)','Reserve Fund (i)','Total (j)','Movement']];
+  ENTITIES.forEach(e => {
+    const r = data[e] || {bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
+    const c = compute(r);
+    rows.push([e, r.bank, r.sweep, r.fd, r.inv, r.brs, c.liquid, r.ana, c.treasury, r.reserve, c.total, r.movement||0]);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = rows[0].map(() => ({wch:14}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Balance '+currentDate);
+  XLSX.writeFile(wb, 'DailyBankBalance_'+currentDate+'.xlsx');
+  showStatus('✓ Excel file downloaded successfully', false);
+}
+
+function showStatus(msg, isError) {
+  const el = document.getElementById('status-bar');
+  el.textContent = msg;
+  el.className = 'status-bar show' + (isError ? ' error' : '');
+  setTimeout(() => el.classList.remove('show'), 4000);
+}
+</script>
+</body>
+</html>
