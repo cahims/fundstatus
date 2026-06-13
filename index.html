@@ -593,7 +593,7 @@ async function doRefresh(){
   setSyncState('loading','⏳ Loading…');
   try{
     if(SHEET_CSV_URL==='YOUR_SHEET_CSV_URL_HERE') throw new Error('not_configured');
-    const proxy='https://api.allorigins.win/get?url='+encodeURIComponent(SHEET_CSV_URL);
+    fetch(SHEET_CSV_URL);
     const resp=await fetch(proxy);
     if(!resp.ok) throw new Error('HTTP '+resp.status);
     const json=await resp.json();
