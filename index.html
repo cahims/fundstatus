@@ -594,10 +594,14 @@ async function doRefresh(){
   try{
     if(SHEET_CSV_URL==='YOUR_SHEET_CSV_URL_HERE') throw new Error('not_configured');
     fetch(SHEET_CSV_URL);
-    const resp=await fetch(SHEET_CSV_URL);
-    if(!resp.ok) throw new Error('HTTP '+resp.status);
-    const json=await resp.json();
-    parseSheetCSV(json.contents);
+    const resp = await fetch(SHEET_CSV_URL);
+
+if (!resp.ok) {
+  throw new Error('HTTP ' + resp.status);
+}
+
+const csv = await resp.text();
+parseSheetCSV(csv);
     setSyncState('ok','✅ Live · '+formatTime(new Date()));
     document.getElementById('data-src-label').textContent='Google Sheet · live';
     renderAll();
