@@ -3,778 +3,1073 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Daily Bank Balance Dashboard</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<title>Bank Balance Hub</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f5f7; color: #1a1a2e; font-size: 14px; }
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f4f5f7;--surface:#fff;--border:#e2e4e9;--text:#1a1a2e;--muted:#64748b;--hint:#94a3b8;
+  --blue:#2563eb;--blue-lt:#eff6ff;--blue-bd:#bfdbfe;
+  --green:#16a34a;--green-lt:#f0fdf4;--green-bd:#bbf7d0;
+  --red:#dc2626;--red-lt:#fef2f2;--red-bd:#fecaca;
+  --amber:#d97706;--amber-lt:#fffbeb;--amber-bd:#fde68a;
+  --teal:#0d9488;--purple:#7c3aed;--radius:8px;--radius-lg:12px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
 
-  /* Top Nav */
-  .topbar { background: #fff; border-bottom: 1px solid #e2e4e9; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100; }
-  .topbar-left { display: flex; align-items: center; gap: 16px; }
-  .logo { font-size: 16px; font-weight: 700; color: #1a1a2e; letter-spacing: -0.3px; }
-  .logo span { color: #2563eb; }
-  .date-badge { background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-  .topbar-right { display: flex; align-items: center; gap: 10px; }
-  .btn { padding: 7px 14px; border-radius: 7px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; display: flex; align-items: center; gap: 6px; transition: all 0.15s; }
-  .btn-ghost { background: transparent; color: #64748b; border: 1px solid #e2e4e9; }
-  .btn-ghost:hover { background: #f8fafc; }
-  .btn-primary { background: #2563eb; color: #fff; }
-  .btn-primary:hover { background: #1d4ed8; }
-  .btn-success { background: #16a34a; color: #fff; }
-  .btn-success:hover { background: #15803d; }
-  .btn-orange { background: #ea580c; color: #fff; }
-  .btn-orange:hover { background: #c2410c; }
-  .user-chip { display: flex; align-items: center; gap: 8px; padding: 5px 10px; background: #f8fafc; border-radius: 20px; border: 1px solid #e2e4e9; cursor: pointer; font-size: 13px; font-weight: 500; }
-  .avatar { width: 26px; height: 26px; border-radius: 50%; background: #2563eb; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+/* ── AUTH SCREEN ── */
+#auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1e3a6e 0%,#2563eb 60%,#0d9488 100%)}
+.auth-card{background:#fff;border-radius:16px;padding:40px 36px;width:380px;box-shadow:0 24px 60px rgba(0,0,0,.18)}
+.auth-logo{font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px;margin-bottom:6px}.auth-logo span{color:var(--blue)}
+.auth-sub{font-size:13px;color:var(--muted);margin-bottom:28px}
+.auth-label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;margin-top:16px}
+.auth-input{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;transition:border .15s;font-family:inherit}
+.auth-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.auth-btn{width:100%;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;margin-top:20px;transition:background .15s}
+.auth-btn:hover{background:#1d4ed8}
+.auth-btn:disabled{opacity:.6;cursor:default}
+.auth-err{background:var(--red-lt);border:1px solid var(--red-bd);color:var(--red);border-radius:var(--radius);padding:9px 12px;font-size:13px;margin-top:14px;display:none}
+.auth-forgot{text-align:right;margin-top:8px}<a class="forgot-link" style="font-size:12px;color:var(--blue);text-decoration:none;cursor:pointer">Forgot password?</a>
+.auth-ok{background:var(--green-lt);border:1px solid var(--green-bd);color:var(--green);border-radius:var(--radius);padding:9px 12px;font-size:13px;margin-top:14px;display:none}
 
-  /* Layout */
-  .main { max-width: 1400px; margin: 0 auto; padding: 24px; }
-  .section-title { font-size: 13px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+/* ── APP SHELL ── */
+#app-screen{display:none}
+.topbar{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
+.topbar-left{display:flex;align-items:center;gap:16px}
+.logo{font-size:16px;font-weight:800;color:var(--text);letter-spacing:-.3px}.logo span{color:var(--blue)}
+.date-badge{background:var(--blue-lt);color:var(--blue);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn{padding:7px 13px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:6px;transition:all .15s;white-space:nowrap}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}.btn-ghost:hover{background:#f8fafc}
+.btn-blue{background:var(--blue);color:#fff}.btn-blue:hover{background:#1d4ed8}
+.btn-green{background:var(--green);color:#fff}.btn-green:hover{background:#15803d}
+.btn-red{background:var(--red);color:#fff}.btn-red:hover{background:#b91c1c}
+.btn-amber{background:var(--amber);color:#fff}.btn-amber:hover{background:#b45309}
+.user-chip{display:flex;align-items:center;gap:8px;padding:5px 10px;background:#f8fafc;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-size:13px;font-weight:500}
+.avatar{width:26px;height:26px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0}
+.avatar.admin{background:var(--purple)}
+.sync-chip{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.sync-ok{background:var(--green-lt);border:1px solid var(--green-bd);color:var(--green)}
+.sync-err{background:var(--red-lt);border:1px solid var(--red-bd);color:var(--red)}
+.sync-loading{background:var(--blue-lt);border:1px solid var(--blue-bd);color:var(--blue)}
 
-  /* Summary Cards */
-  .metric-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
-  .metric-card { background: #fff; border-radius: 10px; padding: 16px; border: 1px solid #e2e4e9; }
-  .metric-label { font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px; }
-  .metric-value { font-size: 22px; font-weight: 700; color: #1a1a2e; }
-  .metric-sub { font-size: 11px; color: #94a3b8; margin-top: 4px; }
-  .metric-up { color: #16a34a; }
-  .metric-down { color: #dc2626; }
+/* ── MAIN ── */
+.main{max-width:1400px;margin:0 auto;padding:24px}
+.tabs{display:flex;gap:2px;background:#f1f5f9;padding:4px;border-radius:var(--radius);margin-bottom:20px;width:fit-content}
+.tab{padding:7px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;color:var(--muted);transition:all .15s}
+.tab.active{background:#fff;color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.tab.admin-only{display:none}
 
-  /* Tabs */
-  .tabs { display: flex; gap: 2px; background: #f1f5f9; padding: 4px; border-radius: 8px; margin-bottom: 20px; width: fit-content; }
-  .tab { padding: 7px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; color: #64748b; transition: all 0.15s; }
-  .tab.active { background: #fff; color: #1a1a2e; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+/* METRICS */
+.metric-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+.metric-card{background:#fff;border-radius:10px;padding:16px;border:1px solid var(--border)}
+.metric-label{font-size:11px;color:var(--hint);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.metric-value{font-size:22px;font-weight:800;color:var(--text)}
+.metric-sub{font-size:11px;color:var(--hint);margin-top:3px}
 
-  /* Data Table */
-  .table-wrap { background: #fff; border-radius: 10px; border: 1px solid #e2e4e9; overflow: hidden; margin-bottom: 24px; }
-  .table-toolbar { padding: 14px 16px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  .table-toolbar-left { display: flex; align-items: center; gap: 10px; }
-  .search-box { display: flex; align-items: center; gap: 8px; background: #f8fafc; border: 1px solid #e2e4e9; border-radius: 7px; padding: 7px 12px; }
-  .search-box input { border: none; background: transparent; font-size: 13px; color: #1a1a2e; outline: none; width: 180px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  thead { background: #f8fafc; }
-  th { padding: 10px 12px; text-align: right; font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1px solid #e2e4e9; white-space: nowrap; }
-  th:first-child { text-align: left; }
-  td { padding: 10px 12px; text-align: right; border-bottom: 1px solid #f1f5f9; color: #334155; }
-  td:first-child { text-align: left; font-weight: 600; color: #1a1a2e; }
-  tr:last-child td { border-bottom: none; }
-  tr.total-row { background: #f0f7ff; }
-  tr.total-row td { font-weight: 700; color: #1a1a2e; border-top: 2px solid #2563eb; border-bottom: none; }
-  tr:hover:not(.total-row) td { background: #fafbff; }
-  .movement-pos { color: #16a34a; font-weight: 600; }
-  .movement-neg { color: #dc2626; font-weight: 600; }
-  .movement-zero { color: #94a3b8; }
-  .editable-cell { background: transparent; border: none; font-size: 13px; text-align: right; width: 80px; color: #334155; outline: none; font-family: inherit; }
-  .editable-cell:focus { background: #eff6ff; border-radius: 4px; padding: 2px 4px; }
-  td.edit-col { padding: 6px 8px; }
-  .status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 6px; }
-  .status-done { background: #16a34a; }
-  .status-pending { background: #f59e0b; }
+/* TABLE */
+.card{background:#fff;border-radius:10px;border:1px solid var(--border);margin-bottom:20px;overflow:hidden}
+.card-header{padding:14px 16px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.card-title{font-size:14px;font-weight:700;color:var(--text)}
+.card-sub{font-size:12px;color:var(--hint);margin-top:2px}
+.search-box{display:flex;align-items:center;gap:8px;background:#f8fafc;border:1px solid var(--border);border-radius:var(--radius);padding:6px 12px}
+.search-box input{border:none;background:transparent;font-size:13px;outline:none;width:160px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:#f8fafc}
+th{padding:9px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border);white-space:nowrap}
+th:first-child{text-align:left}
+td{padding:9px 12px;text-align:right;border-bottom:1px solid #f8fafc;color:#334155}
+td:first-child{text-align:left;font-weight:700;color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr.total-row{background:#f0f7ff}
+tr.total-row td{font-weight:800;border-top:2px solid var(--blue)}
+tr:hover:not(.total-row) td{background:#fafbff}
+.badge{display:inline-flex;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
+.badge-green{background:var(--green-lt);color:var(--green)}
+.badge-amber{background:var(--amber-lt);color:var(--amber)}
+.badge-red{background:var(--red-lt);color:var(--red)}
+.mv-pos{color:var(--green);font-weight:700}
+.mv-neg{color:var(--red);font-weight:700}
+.mv-zero{color:var(--hint)}
 
-  /* Charts */
-  .chart-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; margin-bottom: 24px; }
-  .chart-card { background: #fff; border-radius: 10px; border: 1px solid #e2e4e9; padding: 16px; }
-  .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-  .chart-title { font-size: 14px; font-weight: 600; color: #1a1a2e; }
-  .chart-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+/* CHARTS */
+.chart-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-bottom:20px}
+.chart-card{background:#fff;border-radius:10px;border:1px solid var(--border);padding:16px}
+.chart-title{font-size:14px;font-weight:700;margin-bottom:14px}
 
-  /* Data Entry Panel */
-  .entry-panel { background: #fff; border-radius: 10px; border: 1px solid #e2e4e9; padding: 20px; margin-bottom: 24px; }
-  .entry-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 16px; }
-  .form-group { display: flex; flex-direction: column; gap: 5px; }
-  .form-label { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px; }
-  .form-input { padding: 8px 10px; border: 1px solid #e2e4e9; border-radius: 7px; font-size: 13px; color: #1a1a2e; outline: none; transition: border 0.15s; font-family: inherit; }
-  .form-input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-  select.form-input { cursor: pointer; }
-  .entry-actions { display: flex; gap: 10px; margin-top: 16px; }
+/* DATA ENTRY */
+.entry-panel{background:#fff;border-radius:10px;border:1px solid var(--border);padding:20px;margin-bottom:20px}
+.entry-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.form-input{padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;outline:none;transition:border .15s;font-family:inherit}
+.form-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.form-input:disabled{background:#f8fafc;color:var(--muted)}
+select.form-input{cursor:pointer}
+.lock-badge{display:inline-flex;align-items:center;gap:4px;background:var(--amber-lt);border:1px solid var(--amber-bd);color:var(--amber);padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700}
+.preview-box{background:var(--blue-lt);border-radius:var(--radius);padding:9px 12px;font-size:13px;color:var(--blue);font-weight:700}
 
-  /* Email Modal */
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; }
-  .modal-overlay.open { display: flex; }
-  .modal { background: #fff; border-radius: 12px; width: 480px; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
-  .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
-  .modal-sub { font-size: 13px; color: #64748b; margin-bottom: 20px; }
-  .modal-field { margin-bottom: 14px; }
-  .modal-field label { display: block; font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
-  .modal-field input, .modal-field textarea { width: 100%; padding: 9px 12px; border: 1px solid #e2e4e9; border-radius: 7px; font-size: 13px; outline: none; font-family: inherit; }
-  .modal-field input:focus, .modal-field textarea:focus { border-color: #2563eb; }
-  .modal-field textarea { height: 80px; resize: vertical; }
-  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
-  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-  .tag { background: #eff6ff; color: #2563eb; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; display: flex; align-items: center; gap: 5px; }
-  .tag button { background: none; border: none; color: #2563eb; cursor: pointer; font-size: 14px; line-height: 1; padding: 0; }
+/* AUDIT TRAIL */
+.audit-row td{font-size:12px}
+.audit-who{font-weight:600;color:var(--text)}
+.audit-time{color:var(--hint);font-size:11px}
 
-  /* Status bar */
-  .status-bar { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; font-size: 13px; color: #166534; display: none; }
-  .status-bar.show { display: flex; }
-  .status-bar.error { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+/* STATUS TAB */
+.sub-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.sub-card{background:#f8fafc;border-radius:var(--radius);padding:10px 12px;border:1px solid var(--border)}
+.sub-entity{font-weight:700;font-size:13px}
+.sub-info{font-size:11px;color:var(--muted);margin-top:3px}
+.status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px}
+.dot-green{background:var(--green)}.dot-amber{background:var(--amber)}.dot-red{background:var(--red)}
 
-  /* Submission status table */
-  .sub-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
-  .sub-card { background: #f8fafc; border-radius: 8px; padding: 10px 12px; border: 1px solid #e2e4e9; }
-  .sub-entity { font-weight: 600; font-size: 13px; }
-  .sub-status { font-size: 11px; color: #64748b; margin-top: 3px; display: flex; align-items: center; gap: 4px; }
+/* MODAL */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:#fff;border-radius:var(--radius-lg);width:460px;max-width:96vw;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.15);max-height:90vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:800;margin-bottom:4px}
+.modal-sub{font-size:13px;color:var(--muted);margin-bottom:20px}
+.modal-field{margin-bottom:14px}
+.modal-field label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.modal-field input,.modal-field select{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;outline:none;font-family:inherit}
+.modal-field input:focus,.modal-field select:focus{border-color:var(--blue)}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+.info-box{background:var(--blue-lt);border:1px solid var(--blue-bd);border-radius:var(--radius);padding:10px 14px;font-size:13px;color:#1e40af;margin-bottom:16px;line-height:1.6}
+.warn-box{background:var(--amber-lt);border:1px solid var(--amber-bd);border-radius:var(--radius);padding:10px 14px;font-size:13px;color:#78350f;margin-bottom:16px;line-height:1.6}
 
-  @media (max-width: 900px) {
-    .metric-row { grid-template-columns: repeat(2, 1fr); }
-    .chart-grid { grid-template-columns: 1fr; }
-    .entry-grid { grid-template-columns: repeat(2, 1fr); }
-    .sub-grid { grid-template-columns: repeat(2, 1fr); }
-  }
+/* STATUS BAR */
+.status-bar{border-radius:var(--radius);padding:10px 14px;font-size:13px;display:none;align-items:center;gap:8px;margin-bottom:16px}
+.status-bar.show{display:flex}
+.status-ok{background:var(--green-lt);border:1px solid var(--green-bd);color:var(--green)}
+.status-err{background:var(--red-lt);border:1px solid var(--red-bd);color:var(--red)}
+
+/* CONFIG NOTICE */
+.config-notice{background:#1e3a6e;color:#93c5fd;border-radius:var(--radius);padding:12px 16px;font-size:13px;margin-bottom:20px;line-height:1.7;display:none}
+.config-notice code{background:rgba(255,255,255,.15);padding:2px 6px;border-radius:4px;font-family:monospace;font-size:12px}
+
+@media(max-width:900px){
+  .metric-row{grid-template-columns:repeat(2,1fr)}
+  .chart-grid{grid-template-columns:1fr}
+  .entry-grid{grid-template-columns:repeat(2,1fr)}
+  .sub-grid{grid-template-columns:repeat(2,1fr)}
+}
 </style>
 </head>
 <body>
 
-<!-- Top Navigation -->
-<div class="topbar">
-  <div class="topbar-left">
-    <div class="logo">Bank<span>Balance</span> Hub</div>
-    <div class="date-badge" id="today-badge"></div>
-  </div>
-  <div class="topbar-right">
-    <div class="user-chip" onclick="showUserSelect()">
-      <div class="avatar" id="user-avatar">AD</div>
-      <span id="user-name-display">Admin</span>
-      <span style="color:#94a3b8;font-size:12px;">▾</span>
-    </div>
-    <button class="btn btn-ghost" onclick="exportExcel()">⬇ Export Excel</button>
-    <button class="btn btn-orange" onclick="openEmailModal()">✉ Send Report</button>
-  </div>
-</div>
-
-<!-- User Select Modal -->
-<div class="modal-overlay" id="user-modal">
-  <div class="modal" style="width:360px;">
-    <div class="modal-title">Select Your Profile</div>
-    <div class="modal-sub">Choose your entity to enter data</div>
-    <div id="user-list" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;"></div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeUserModal()">Cancel</button>
-    </div>
+<!-- ══════════════ AUTH SCREEN ══════════════ -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">Bank<span>Balance</span> Hub</div>
+    <div class="auth-sub">Enterprise treasury management — sign in to continue</div>
+    <label class="auth-label">Email</label>
+    <input class="auth-input" type="email" id="login-email" placeholder="you@company.com" autocomplete="email">
+    <label class="auth-label">Password</label>
+    <input class="auth-input" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="auth-forgot"><a class="forgot-link" onclick="doForgot()" style="font-size:12px;color:var(--blue);text-decoration:none;cursor:pointer">Forgot password?</a></div>
+    <button class="auth-btn" id="login-btn" onclick="doLogin()">Sign in</button>
+    <div class="auth-err" id="auth-err"></div>
+    <div class="auth-ok" id="auth-ok"></div>
   </div>
 </div>
 
-<!-- Email Modal -->
-<div class="modal-overlay" id="email-modal">
-  <div class="modal">
-    <div class="modal-title">Send Daily Balance Report</div>
-    <div class="modal-sub">Report will include the full consolidated balance table & charts</div>
-    <div class="modal-field">
-      <label>Recipients</label>
-      <input type="email" id="email-input" placeholder="Add email and press Enter" onkeydown="addEmail(event)">
-      <div class="tag-row" id="email-tags"></div>
+<!-- ══════════════ APP SCREEN ══════════════ -->
+<div id="app-screen">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="logo">Bank<span>Balance</span> Hub</div>
+      <div class="date-badge" id="today-badge"></div>
     </div>
-    <div class="modal-field">
-      <label>Subject</label>
-      <input type="text" id="email-subject" value="">
-    </div>
-    <div class="modal-field">
-      <label>Message</label>
-      <textarea id="email-body">Please find the Daily Bank Balance Report attached. All figures are in Crores (₹).</textarea>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeEmailModal()">Cancel</button>
-      <button class="btn btn-success" onclick="sendReport()">✉ Send Now</button>
+    <div class="topbar-right">
+      <span class="sync-chip sync-loading" id="sync-chip">⏳ Connecting...</span>
+      <div class="user-chip">
+        <div class="avatar" id="top-avatar">?</div>
+        <span id="top-name">—</span>
+        <span id="top-role" style="font-size:11px;color:var(--muted)"></span>
+      </div>
+      <button class="btn btn-ghost" onclick="doRefresh()">🔄 Refresh</button>
+      <button class="btn btn-ghost" onclick="exportExcel()">⬇ Excel</button>
+      <button class="btn btn-red" onclick="doLogout()">Sign out</button>
     </div>
   </div>
-</div>
 
-<div class="main">
-  <div class="status-bar" id="status-bar"></div>
+  <div class="main">
+    <!-- Config notice (shown if Firebase not configured) -->
+    <div class="config-notice" id="config-notice">
+      ⚙️ <strong>Firebase not yet configured.</strong> Open <code>dashboard.html</code>, find <code>FIREBASE_CONFIG</code> near the top of the script, and paste your Firebase project credentials. See <code>SETUP.md</code> for instructions. Running in <strong>demo mode</strong> with sample data.
+    </div>
 
-  <!-- Tabs -->
-  <div class="tabs">
-    <div class="tab active" onclick="switchTab('dashboard', this)">📊 Dashboard</div>
-    <div class="tab" onclick="switchTab('entry', this)">✏️ Data Entry</div>
-    <div class="tab" onclick="switchTab('status', this)">✅ Submission Status</div>
-  </div>
+    <div class="status-bar" id="status-bar"></div>
 
-  <!-- DASHBOARD TAB -->
-  <div id="tab-dashboard">
-    <!-- Metric Cards -->
-    <div class="metric-row" id="metric-row"></div>
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('dashboard',this)">📊 Dashboard</div>
+      <div class="tab" onclick="switchTab('entry',this)">✏️ Enter Data</div>
+      <div class="tab" onclick="switchTab('status',this)">✅ Status</div>
+      <div class="tab admin-only" id="tab-audit-btn" onclick="switchTab('audit',this)">🔍 Audit Trail</div>
+      <div class="tab admin-only" id="tab-users-btn" onclick="switchTab('users',this)">👥 Users</div>
+    </div>
 
-    <!-- Charts -->
-    <div class="chart-grid">
-      <div class="chart-card">
-        <div class="chart-header">
+    <!-- ── DASHBOARD TAB ── -->
+    <div id="tab-dashboard">
+      <div class="metric-row" id="metric-row"></div>
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">Total balance by entity · ₹ Crores</div>
+          <div style="position:relative;height:260px"><canvas id="barChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Fund composition</div>
+          <div style="position:relative;height:200px"><canvas id="doughnut"></canvas></div>
+          <div id="donut-legend" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:12px;color:var(--muted);justify-content:center"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Consolidated balances — <span id="table-date-label"></span></div><div class="card-sub">All figures ₹ Crores · <span id="data-src-label"></span></div></div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <div class="search-box">🔍 <input type="text" placeholder="Search entity…" oninput="filterTable(this.value)"></div>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table id="main-table">
+            <thead><tr>
+              <th>Entity</th><th>Bank (a)</th><th>Sweep TD (b)</th><th>FD (c)</th>
+              <th>Investment (d)</th><th>BRS (e)</th><th>Liquid (f)</th>
+              <th>Liquid & MF (g)</th><th>Treasury (h)</th><th>Reserve (i)</th>
+              <th>Total (j)</th><th>Movement</th>
+            </tr></thead>
+            <tbody id="main-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ENTRY TAB ── -->
+    <div id="tab-entry" style="display:none">
+      <div class="entry-panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:4px">
           <div>
-            <div class="chart-title">Total Balance by Entity</div>
-            <div class="chart-sub">Consolidated view · ₹ Crores</div>
+            <div style="font-size:15px;font-weight:800">Enter / Update Balance</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">Submits directly to Google Sheet · ₹ Crores</div>
+          </div>
+          <div id="lock-notice" class="lock-badge" style="display:none">🔒 Already submitted — only admin can edit</div>
+        </div>
+        <div class="entry-grid">
+          <div class="form-group">
+            <label class="form-label">Entity</label>
+            <select class="form-input" id="entry-entity" onchange="onEntityChange()"><option value="">Select entity…</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date</label>
+            <input type="date" class="form-input" id="entry-date" onchange="onEntityChange()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Bank (a)</label>
+            <input type="number" step="0.01" class="form-input" id="f-bank" placeholder="0.00" oninput="updatePreview()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Sweep TD (b)</label>
+            <input type="number" step="0.01" class="form-input" id="f-sweep" placeholder="0.00" oninput="updatePreview()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">FD (c)</label>
+            <input type="number" step="0.01" class="form-input" id="f-fd" placeholder="0.00" oninput="updatePreview()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Investment (d)</label>
+            <input type="number" step="0.01" class="form-input" id="f-inv" placeholder="0.00" oninput="updatePreview()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">BRS (e)</label>
+            <input type="number" step="0.01" class="form-input" id="f-brs" placeholder="0.00" oninput="updatePreview()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Liquid & MF (g)</label>
+            <input type="number" step="0.01" class="form-input" id="f-ana" placeholder="0.00" oninput="updatePreview()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Reserve Fund (i)</label>
+            <input type="number" step="0.01" class="form-input" id="f-reserve" placeholder="0.00" oninput="updatePreview()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Remarks (optional)</label>
+            <input type="text" class="form-input" id="f-remarks" placeholder="Any note…">
+          </div>
+          <div class="form-group" style="grid-column:span 2">
+            <label class="form-label">Computed preview</label>
+            <div class="preview-box" id="preview-box">Total: — · Liquid: — · Treasury: —</div>
           </div>
         </div>
-        <div style="position:relative;height:260px;"><canvas id="barChart" role="img" aria-label="Bar chart of total balance by entity"></canvas></div>
+        <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+          <button class="btn btn-blue" id="submit-btn" onclick="submitEntry()">📤 Submit to Sheet</button>
+          <button class="btn btn-ghost" onclick="clearForm()">✕ Clear</button>
+          <span id="submit-spinner" style="display:none;align-items:center;gap:6px;font-size:13px;color:var(--muted)"><span style="animation:spin 1s linear infinite;display:inline-block">⏳</span> Submitting…</span>
+        </div>
       </div>
-      <div class="chart-card">
-        <div class="chart-header">
+
+      <!-- Previous entries for today -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Today's submissions</div>
+          <div class="card-sub" id="entry-count-label"></div>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Entity</th><th>Bank</th><th>Sweep</th><th>FD</th><th>Inv</th><th>BRS</th><th>Liq & MF</th><th>Reserve</th><th>Total</th><th>Submitted by</th><th>Time</th><th>Status</th></tr></thead>
+            <tbody id="entry-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STATUS TAB ── -->
+    <div id="tab-status" style="display:none">
+      <div class="card" style="padding:20px">
+        <div class="card-title" style="margin-bottom:4px">Submission status — <span id="status-date-label"></span></div>
+        <div class="card-sub" style="margin-bottom:16px">Data sourced from Google Sheet</div>
+        <div class="sub-grid" id="sub-grid"></div>
+      </div>
+      <div class="card" style="margin-top:0">
+        <div class="card-header"><div class="card-title">Summary log</div></div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>Entity</th><th>Liquid ₹Cr</th><th>Treasury ₹Cr</th><th>Total ₹Cr</th><th>Submitted by</th><th>Time</th><th>Status</th></tr></thead>
+          <tbody id="log-tbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── AUDIT TRAIL TAB (admin only) ── -->
+    <div id="tab-audit" style="display:none">
+      <div class="info-box">Full history of every submission and edit. Only visible to admin accounts.</div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Audit trail</div>
+          <div style="display:flex;gap:8px">
+            <select class="form-input" id="audit-entity-filter" onchange="renderAudit()" style="width:140px;padding:6px 8px">
+              <option value="">All entities</option>
+            </select>
+            <input type="date" class="form-input" id="audit-date-filter" onchange="renderAudit()" style="width:150px;padding:6px 8px">
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="audit-row">
+            <thead><tr><th>Time</th><th>Entity</th><th>Date</th><th>Action</th><th>By (email)</th><th>Bank</th><th>Sweep</th><th>FD</th><th>Inv</th><th>BRS</th><th>Liq&MF</th><th>Reserve</th><th>Total</th><th>Remarks</th></tr></thead>
+            <tbody id="audit-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── USERS TAB (admin only) ── -->
+    <div id="tab-users" style="display:none">
+      <div class="info-box">Create login accounts for team members. Users can enter data for any entity. Admin can edit locked submissions.</div>
+      <div class="card" style="padding:20px;margin-bottom:16px">
+        <div style="font-size:15px;font-weight:800;margin-bottom:16px">Add new user</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end">
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-input" id="new-email" placeholder="user@company.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Display name</label>
+            <input type="text" class="form-input" id="new-name" placeholder="Full name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Role</label>
+            <select class="form-input" id="new-role">
+              <option value="user">User (can enter data)</option>
+              <option value="admin">Admin (can edit locked rows)</option>
+            </select>
+          </div>
           <div>
-            <div class="chart-title">Fund Composition</div>
-            <div class="chart-sub">Liquid · Treasury · Investment</div>
+            <button class="btn btn-blue" onclick="createUser()">+ Create account</button>
           </div>
         </div>
-        <div style="position:relative;height:220px;"><canvas id="doughnut" role="img" aria-label="Doughnut chart of fund composition"></canvas></div>
-        <div id="donut-legend" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;font-size:12px;color:#64748b;justify-content:center;"></div>
+        <div class="warn-box" style="margin-top:14px;margin-bottom:0">⚠️ A temporary password will be shown once. The user must change it on first login. Firebase → Authentication → Email/Password must be enabled.</div>
       </div>
-    </div>
-
-    <!-- Main Table -->
-    <div class="table-wrap">
-      <div class="table-toolbar">
-        <div class="table-toolbar-left">
-          <div class="section-title" style="margin:0;">Daily Bank Balance — <span id="table-date"></span></div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Team members</div></div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>Email</th><th>Name</th><th>Role</th><th>UID</th><th>Actions</th></tr></thead>
+          <tbody id="users-tbody"></tbody></table>
         </div>
-        <div style="display:flex;gap:8px;">
-          <div class="search-box">
-            <span style="color:#94a3b8;">🔍</span>
-            <input type="text" placeholder="Search entity..." oninput="filterTable(this.value)">
+      </div>
+      <!-- Temp password modal -->
+      <div class="overlay" id="temppass-modal">
+        <div class="modal">
+          <div class="modal-title">✅ User created</div>
+          <div class="modal-sub">Share these credentials securely. The user should change their password on first login.</div>
+          <div style="background:#f8fafc;border-radius:var(--radius);padding:14px;font-size:13px;line-height:2">
+            <div><strong>Email:</strong> <span id="tp-email"></span></div>
+            <div><strong>Temp password:</strong> <code id="tp-pass" style="background:#e2e4e9;padding:2px 6px;border-radius:4px"></code></div>
+            <div><strong>Role:</strong> <span id="tp-role"></span></div>
           </div>
+          <div class="modal-actions"><button class="btn btn-blue" onclick="document.getElementById('temppass-modal').classList.remove('open')">Done</button></div>
         </div>
-      </div>
-      <div style="overflow-x:auto;">
-        <table id="main-table">
-          <thead>
-            <tr>
-              <th>Entity</th>
-              <th>Bank (a)</th>
-              <th>Sweep TD (b)</th>
-              <th>FD (c)</th>
-              <th>Investment (d)</th>
-              <th>BRS (e)</th>
-              <th>Liquid (f=a+b+e)</th>
-              <th>Liquid & MF (g)</th>
-              <th>Treasury (h=c+d)</th>
-              <th>Reserve Fund (i)</th>
-              <th>Total (j)</th>
-              <th>Movement</th>
-            </tr>
-          </thead>
-          <tbody id="main-tbody"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- DATA ENTRY TAB -->
-  <div id="tab-entry" style="display:none;">
-    <div class="entry-panel">
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <div>
-          <div style="font-size:15px;font-weight:700;margin-bottom:3px;">Enter / Update Balance Data</div>
-          <div style="font-size:12px;color:#64748b;">Figures in ₹ Crores · All fields accept negative values</div>
-        </div>
-        <div style="font-size:12px;color:#2563eb;font-weight:600;background:#eff6ff;padding:6px 12px;border-radius:20px;">
-          Logged in as: <span id="entry-user-label">—</span>
-        </div>
-      </div>
-      <div class="entry-grid">
-        <div class="form-group">
-          <label class="form-label">Entity</label>
-          <select class="form-input" id="entry-entity">
-            <option value="">Select Entity</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Date</label>
-          <input type="date" class="form-input" id="entry-date">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Bank (a)</label>
-          <input type="number" step="0.01" class="form-input" id="f-bank" placeholder="0.00">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Sweep TD (b)</label>
-          <input type="number" step="0.01" class="form-input" id="f-sweep" placeholder="0.00">
-        </div>
-        <div class="form-group">
-          <label class="form-label">FD (c)</label>
-          <input type="number" step="0.01" class="form-input" id="f-fd" placeholder="0.00">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Investment (d)</label>
-          <input type="number" step="0.01" class="form-input" id="f-inv" placeholder="0.00">
-        </div>
-        <div class="form-group">
-          <label class="form-label">BRS (e)</label>
-          <input type="number" step="0.01" class="form-input" id="f-brs" placeholder="0.00">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Liquid & MF / ANA (g)</label>
-          <input type="number" step="0.01" class="form-input" id="f-ana" placeholder="0.00">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Reserve Fund (i)</label>
-          <input type="number" step="0.01" class="form-input" id="f-reserve" placeholder="0.00">
-        </div>
-        <div class="form-group" style="justify-content:flex-end;">
-          <label class="form-label">Computed Preview</label>
-          <div style="background:#f0f7ff;border-radius:7px;padding:8px 10px;font-size:12px;color:#1e40af;font-weight:600;" id="preview-total">Total: —</div>
-        </div>
-      </div>
-      <div class="entry-actions">
-        <button class="btn btn-primary" onclick="saveEntry()">💾 Save Entry</button>
-        <button class="btn btn-ghost" onclick="clearForm()">✕ Clear</button>
       </div>
     </div>
 
-    <!-- Inline editable table -->
-    <div class="table-wrap">
-      <div class="table-toolbar">
-        <div class="section-title" style="margin:0;">All Entries — Edit Inline</div>
-      </div>
-      <div style="overflow-x:auto;">
-        <table>
-          <thead>
-            <tr>
-              <th>Entity</th><th>Bank</th><th>Sweep TD</th><th>FD</th><th>Investment</th><th>BRS</th><th>Liquid & MF</th><th>Reserve</th><th>Total</th><th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="entry-tbody"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
+  </div><!-- /main -->
+</div><!-- /app-screen -->
 
-  <!-- SUBMISSION STATUS TAB -->
-  <div id="tab-status" style="display:none;">
-    <div style="background:#fff;border-radius:10px;border:1px solid #e2e4e9;padding:20px;margin-bottom:20px;">
-      <div style="font-size:15px;font-weight:700;margin-bottom:4px;">Today's Submission Status</div>
-      <div style="font-size:12px;color:#64748b;margin-bottom:16px;">Tracks which entities have submitted their daily data</div>
-      <div class="sub-grid" id="sub-grid"></div>
-    </div>
-    <div style="background:#fff;border-radius:10px;border:1px solid #e2e4e9;padding:20px;">
-      <div style="font-size:15px;font-weight:700;margin-bottom:12px;">Submission Log</div>
-      <table style="width:100%;">
-        <thead><tr><th style="text-align:left;">Entity</th><th>Last Updated</th><th>Total (₹ Cr)</th><th>Status</th></tr></thead>
-        <tbody id="log-tbody"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 
 <script>
-// ── DATA STORE (localStorage) ──────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// ██  CONFIGURATION — FILL THESE IN BEFORE DEPLOYING  ██
+// ══════════════════════════════════════════════════════════════════════════════
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyD-q5l48TytETa8xICkpVzX1_qL3-IXlNA",
+  authDomain: "treasury-management-dc09a.firebaseapp.com",
+  projectId: "treasury-management-dc09a",
+  storageBucket: "treasury-management-dc09a.firebasestorage.app",
+  messagingSenderId: "333441184724",
+  appId: "1:333441184724:web:127304291c677cf4019c41"
+};
+
+// Google Apps Script Web App URL — after you deploy appsscript.js as a Web App
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz66weg9eZZWIzhYAbj1DA4cvdR8HkGthTBGemHMATSkhGzUwK6170Eo-XsU2zvjzmvaA/exec";
+
+// Google Sheet published CSV URL — File → Share → Publish to web → CSV
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRp7XPqpC21waDyB8izLh6yeXZrCzWpDo2E6Smgdr_UH__t3hPRM5TBfG7flJu79XMqDf8homHUW1O5/pub?output=csv";
+
+// Admin email addresses — these users can edit locked submissions
+const ADMIN_EMAILS = ["cahimanshugarg09@gmail.com"];
+
+// ══════════════════════════════════════════════════════════════════════════════
+
 const ENTITIES = ['MAIA','MEIPL','MEOPL','MLS','MLSIPL','NHD','JGD','JVDPL','RDL','NHEPL','NHBPL','NHRPL','NPDLLP','PPEPL','NYPL','SGELLP','SGRPL'];
 
-const USERS = [
-  {id:'admin', name:'Admin', avatar:'AD', entity: null},
-  {id:'maia', name:'MAIA Admin', avatar:'MA', entity:'MAIA'},
-  {id:'meipl', name:'MEIPL Admin', avatar:'ME', entity:'MEIPL'},
-  {id:'meopl', name:'MEOPL Admin', avatar:'MO', entity:'MEOPL'},
-  {id:'mls', name:'MLS Admin', avatar:'ML', entity:'MLS'},
-  {id:'nhdadm', name:'NHD Admin', avatar:'NH', entity:'NHD'},
-  {id:'jgd', name:'JGD Admin', avatar:'JG', entity:'JGD'},
-  {id:'nhepl', name:'NHEPL Admin', avatar:'NE', entity:'NHEPL'},
-  {id:'nhrpl', name:'NHRPL Admin', avatar:'NR', entity:'NHRPL'},
-  {id:'sgrpl', name:'SGRPL Admin', avatar:'SG', entity:'SGRPL'},
-];
-
-// Default seed data from image
-const DEFAULT_DATA = {
-  MAIA:   {bank:0.18, sweep:0, fd:13.75, inv:61.81, brs:0.55, ana:0.73, reserve:0},
-  MEIPL:  {bank:2.33, sweep:0, fd:0, inv:0, brs:-0.04, ana:0, reserve:0},
-  MEOPL:  {bank:0.09, sweep:0.08, fd:0, inv:7.86, brs:0, ana:0.17, reserve:7.86},
-  MLS:    {bank:0.20, sweep:0, fd:0, inv:0, brs:-0.04, ana:0.16, reserve:0},
-  MLSIPL: {bank:2.98, sweep:4.10, fd:0, inv:0, brs:0, ana:7.09, reserve:0},
-  NHD:    {bank:8.32, sweep:1.20, fd:0.25, inv:9.34, brs:-0.92, ana:8.60, reserve:1.05},
-  JGD:    {bank:0.09, sweep:0, fd:0, inv:0, brs:0, ana:0.09, reserve:0},
-  JVDPL:  {bank:0.85, sweep:7.01, fd:0, inv:11.45, brs:-0.17, ana:7.68, reserve:0},
-  RDL:    {bank:0.01, sweep:0.41, fd:0, inv:17.04, brs:-0.00, ana:0.42, reserve:0},
-  NHEPL:  {bank:7.65, sweep:0.03, fd:0, inv:5.11, brs:-0.19, ana:7.49, reserve:0},
-  NHBPL:  {bank:0.00, sweep:0, fd:0, inv:0, brs:0, ana:0.00, reserve:0},
-  NHRPL:  {bank:1.50, sweep:2.66, fd:0, inv:0, brs:-0.21, ana:3.95, reserve:0},
-  NPDLLP: {bank:0.01, sweep:0, fd:0, inv:0, brs:0, ana:0.01, reserve:0},
-  PPEPL:  {bank:0.01, sweep:0, fd:0, inv:0, brs:0, ana:0.01, reserve:0},
-  NYPL:   {bank:2.07, sweep:0, fd:0, inv:0, brs:-1.14, ana:0.93, reserve:0},
-  SGELLP: {bank:0, sweep:0, fd:0, inv:0, brs:0, ana:0, reserve:0},
-  SGRPL:  {bank:0.30, sweep:4.31, fd:0, inv:9.08, brs:-0.00, ana:4.61, reserve:0},
+const DEMO_DATA = {
+  MAIA:{bank:0.18,sweep:0,fd:13.75,inv:61.81,brs:0.55,ana:0.73,reserve:0},
+  MEIPL:{bank:2.33,sweep:0,fd:0,inv:0,brs:-0.04,ana:0,reserve:0},
+  MEOPL:{bank:0.09,sweep:0.08,fd:0,inv:7.86,brs:0,ana:0.17,reserve:7.86},
+  MLS:{bank:0.20,sweep:0,fd:0,inv:0,brs:-0.04,ana:0.16,reserve:0},
+  MLSIPL:{bank:2.98,sweep:4.10,fd:0,inv:0,brs:0,ana:7.09,reserve:0},
+  NHD:{bank:8.32,sweep:1.20,fd:0.25,inv:9.34,brs:-0.92,ana:8.60,reserve:1.05},
+  JGD:{bank:0.09,sweep:0,fd:0,inv:0,brs:0,ana:0.09,reserve:0},
+  JVDPL:{bank:0.85,sweep:7.01,fd:0,inv:11.45,brs:-0.17,ana:7.68,reserve:0},
+  RDL:{bank:0.01,sweep:0.41,fd:0,inv:17.04,brs:0,ana:0.42,reserve:0},
+  NHEPL:{bank:7.65,sweep:0.03,fd:0,inv:5.11,brs:-0.19,ana:7.49,reserve:0},
+  NHBPL:{bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0},
+  NHRPL:{bank:1.50,sweep:2.66,fd:0,inv:0,brs:-0.21,ana:3.95,reserve:0},
+  NPDLLP:{bank:0.01,sweep:0,fd:0,inv:0,brs:0,ana:0.01,reserve:0},
+  PPEPL:{bank:0.01,sweep:0,fd:0,inv:0,brs:0,ana:0.01,reserve:0},
+  NYPL:{bank:2.07,sweep:0,fd:0,inv:0,brs:-1.14,ana:0.93,reserve:0},
+  SGELLP:{bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0},
+  SGRPL:{bank:0.30,sweep:4.31,fd:0,inv:9.08,brs:0,ana:4.61,reserve:0},
 };
 
-function todayStr() {
-  return new Date().toISOString().split('T')[0];
-}
-function getStorageKey(date) { return 'bbdata_' + date; }
-function loadData(date) {
-  const raw = localStorage.getItem(getStorageKey(date));
-  if (raw) return JSON.parse(raw);
-  if (date === todayStr()) return JSON.parse(JSON.stringify(DEFAULT_DATA));
-  return {};
-}
-function saveData(date, data) {
-  localStorage.setItem(getStorageKey(date), JSON.stringify(data));
-}
-function getSubmissions(date) {
-  const raw = localStorage.getItem('bbsubs_' + date);
-  return raw ? JSON.parse(raw) : {};
-}
-function markSubmission(date, entity) {
-  const s = getSubmissions(date);
-  s[entity] = new Date().toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'});
-  localStorage.setItem('bbsubs_' + date, JSON.stringify(s));
-}
-
-// ── COMPUTED FIELDS ─────────────────────────────────────────────────────────
-function compute(r) {
-  const liquid = +(r.bank + r.sweep + r.brs).toFixed(2);
-  const treasury = +(r.fd + r.inv).toFixed(2);
-  const total = +(liquid + r.ana + treasury + r.reserve).toFixed(2);
-  return { liquid, treasury, total };
-}
-
-// ── CURRENT STATE ───────────────────────────────────────────────────────────
-let currentUser = USERS[0];
-let currentDate = todayStr();
-let emailList = [];
+// ── STATE ──────────────────────────────────────────────────────────────────────
+let currentUser = null;
+let isAdmin = false;
+let isDemoMode = false;
+let sheetsData = {};    // { date: { entity: {bank,sweep,...,submittedBy,submittedAt,locked} } }
+let auditLog = [];      // full audit trail from sheet
 let barChartInst, doughnutInst;
 
-// ── INIT ────────────────────────────────────────────────────────────────────
-window.onload = function() {
-  document.getElementById('today-badge').textContent = formatDate(currentDate);
-  document.getElementById('table-date').textContent = formatDate(currentDate);
-  document.getElementById('entry-date').value = currentDate;
-  document.getElementById('email-subject').value = 'Daily Bank Balance Report — ' + formatDate(currentDate);
-  populateEntitySelect();
-  populateUserList();
-  renderAll();
-  // Live preview
-  ['f-bank','f-sweep','f-fd','f-inv','f-brs','f-ana','f-reserve'].forEach(id => {
-    document.getElementById(id).addEventListener('input', updatePreview);
-  });
-};
+// ── FIREBASE INIT ──────────────────────────────────────────────────────────────
+const isConfigured = FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY";
 
-function formatDate(d) {
-  const dt = new Date(d + 'T00:00:00');
-  return dt.toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
+if (isConfigured) {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  firebase.auth().onAuthStateChanged(user => {
+    if (user) {
+      currentUser = user;
+      isAdmin = ADMIN_EMAILS.includes(user.email.toLowerCase());
+      showApp();
+    } else {
+      showAuth();
+    }
+  });
+} else {
+  // Demo mode — skip auth
+  isDemoMode = true;
+  document.getElementById('config-notice').style.display = 'block';
+  currentUser = {email:'demo@company.com', displayName:'Demo Admin'};
+  isAdmin = true;
+  showApp();
 }
 
-function populateEntitySelect() {
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+function showAuth(){
+  document.getElementById('auth-screen').style.display='flex';
+  document.getElementById('app-screen').style.display='none';
+}
+function showApp(){
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app-screen').style.display='block';
+  initApp();
+}
+
+async function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const btn   = document.getElementById('login-btn');
+  const err   = document.getElementById('auth-err');
+  err.style.display='none';
+  if(!email||!pass){showAuthErr('Please enter email and password.');return;}
+  btn.disabled=true; btn.textContent='Signing in…';
+  try{
+    await firebase.auth().signInWithEmailAndPassword(email,pass);
+  }catch(e){
+    showAuthErr(firebaseErrMsg(e.code));
+    btn.disabled=false; btn.textContent='Sign in';
+  }
+}
+
+async function doForgot(){
+  const email = document.getElementById('login-email').value.trim();
+  if(!email){showAuthErr('Enter your email address first.');return;}
+  try{
+    await firebase.auth().sendPasswordResetEmail(email);
+    const ok=document.getElementById('auth-ok');
+    ok.textContent='✓ Reset link sent — check your inbox.';
+    ok.style.display='block';
+  }catch(e){showAuthErr(firebaseErrMsg(e.code));}
+}
+
+async function doLogout(){
+  if(isConfigured) await firebase.auth().signOut();
+  else showAuth();
+}
+
+function showAuthErr(msg){
+  const el=document.getElementById('auth-err');
+  el.textContent=msg; el.style.display='block';
+}
+
+function firebaseErrMsg(code){
+  const map={
+    'auth/user-not-found':'No account found with this email.',
+    'auth/wrong-password':'Incorrect password.',
+    'auth/invalid-email':'Invalid email address.',
+    'auth/too-many-requests':'Too many attempts. Try again later.',
+    'auth/invalid-credential':'Incorrect email or password.',
+  };
+  return map[code]||'Sign-in failed. Please try again.';
+}
+
+// ── APP INIT ──────────────────────────────────────────────────────────────────
+function initApp(){
+  const today = todayStr();
+  document.getElementById('today-badge').textContent = formatDate(today);
+  document.getElementById('table-date-label').textContent = formatDate(today);
+  document.getElementById('status-date-label').textContent = formatDate(today);
+  document.getElementById('entry-date').value = today;
+  document.getElementById('entry-date').max = today;
+
+  // User chip
+  const name = currentUser.displayName || currentUser.email.split('@')[0];
+  const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  document.getElementById('top-avatar').textContent = initials;
+  if(isAdmin) document.getElementById('top-avatar').classList.add('admin');
+  document.getElementById('top-name').textContent = name;
+  document.getElementById('top-role').textContent = isAdmin ? ' · Admin' : '';
+
+  // Show admin-only tabs
+  if(isAdmin){
+    document.querySelectorAll('.admin-only').forEach(el=>el.style.display='');
+    populateAuditFilter();
+    loadUsers();
+  }
+
+  // Entity selects
   const sel = document.getElementById('entry-entity');
-  ENTITIES.forEach(e => { sel.innerHTML += `<option value="${e}">${e}</option>`; });
+  ENTITIES.forEach(e=>sel.innerHTML+=`<option value="${e}">${e}</option>`);
+  const af = document.getElementById('audit-entity-filter');
+  ENTITIES.forEach(e=>af.innerHTML+=`<option value="${e}">${e}</option>`);
+
+  doRefresh();
 }
 
-function populateUserList() {
-  const ul = document.getElementById('user-list');
-  ul.innerHTML = '';
-  USERS.forEach(u => {
-    ul.innerHTML += `<div onclick="selectUser('${u.id}')" style="background:#f8fafc;border:1px solid #e2e4e9;border-radius:8px;padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background 0.15s;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#f8fafc'">
-      <div class="avatar" style="background:${u.id==='admin'?'#7c3aed':'#2563eb'}">${u.avatar}</div>
-      <div><div style="font-weight:600;font-size:13px;">${u.name}</div><div style="font-size:11px;color:#94a3b8;">${u.entity||'All entities'}</div></div>
-    </div>`;
+// ── DATA: FETCH FROM GOOGLE SHEET ─────────────────────────────────────────────
+async function doRefresh(){
+  setSyncState('loading','⏳ Loading…');
+  try{
+    if(SHEET_CSV_URL==='YOUR_SHEET_CSV_URL_HERE') throw new Error('not_configured');
+    const proxy='https://api.allorigins.win/get?url='+encodeURIComponent(SHEET_CSV_URL);
+    const resp=await fetch(proxy);
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const json=await resp.json();
+    parseSheetCSV(json.contents);
+    setSyncState('ok','✅ Live · '+formatTime(new Date()));
+    document.getElementById('data-src-label').textContent='Google Sheet · live';
+    renderAll();
+  }catch(e){
+    if(e.message==='not_configured'||isDemoMode){
+      // Use demo data
+      buildDemoSheetData();
+      setSyncState('ok','🔵 Demo data');
+      document.getElementById('data-src-label').textContent='Demo data';
+      renderAll();
+    }else{
+      setSyncState('err','❌ Sheet error');
+      showStatus('Could not load sheet: '+e.message,true);
+      buildDemoSheetData();
+      renderAll();
+    }
+  }
+}
+
+function parseSheetCSV(csv){
+  /**
+   * Expected columns (case-insensitive):
+   * date, entity, bank, sweep, fd, inv, brs, ana, reserve,
+   * submitted_by, submitted_at, locked, remarks
+   * audit_action (optional: "SUBMIT"|"EDIT_ADMIN")
+   */
+  const lines=csv.trim().split('\n').filter(l=>l.trim());
+  if(lines.length<2) throw new Error('Empty sheet');
+  const headers=lines[0].split(',').map(h=>h.replace(/"/g,'').trim().toLowerCase());
+  const idx=h=>headers.indexOf(h);
+  sheetsData={};
+  auditLog=[];
+
+  for(let i=1;i<lines.length;i++){
+    const cols=splitCSV(lines[i]);
+    if(cols.length<7) continue;
+    const date=(cols[idx('date')]||'').replace(/"/g,'').trim();
+    const entity=(cols[idx('entity')]||'').replace(/"/g,'').trim().toUpperCase();
+    if(!date||!entity) continue;
+    const row={
+      bank:   +((cols[idx('bank')]||'0').replace(/"/g,'')),
+      sweep:  +((cols[idx('sweep')]||'0').replace(/"/g,'')),
+      fd:     +((cols[idx('fd')]||'0').replace(/"/g,'')),
+      inv:    +((cols[idx('inv')]||'0').replace(/"/g,'')),
+      brs:    +((cols[idx('brs')]||'0').replace(/"/g,'')),
+      ana:    +((cols[idx('ana')]||'0').replace(/"/g,'')),
+      reserve:+((cols[idx('reserve')]||'0').replace(/"/g,'')),
+      submittedBy:(cols[idx('submitted_by')]||'').replace(/"/g,'').trim(),
+      submittedAt:(cols[idx('submitted_at')]||'').replace(/"/g,'').trim(),
+      locked: ((cols[idx('locked')]||'').replace(/"/g,'').trim().toLowerCase()==='true'||
+               (cols[idx('locked')]||'').replace(/"/g,'').trim()==='1'),
+      remarks:(cols[idx('remarks')]||'').replace(/"/g,'').trim(),
+      action: (cols[idx('audit_action')]||'SUBMIT').replace(/"/g,'').trim(),
+    };
+    if(!sheetsData[date]) sheetsData[date]={};
+    sheetsData[date][entity]=row;
+    auditLog.push({date,entity,...row,i});
+  }
+  auditLog.sort((a,b)=>b.submittedAt.localeCompare(a.submittedAt));
+}
+
+function buildDemoSheetData(){
+  const today=todayStr();
+  sheetsData={};
+  sheetsData[today]={};
+  Object.entries(DEMO_DATA).forEach(([e,r])=>{
+    sheetsData[today][e]={...r,submittedBy:'demo@company.com',submittedAt:new Date().toISOString(),locked:true,remarks:'',action:'SUBMIT'};
   });
+  auditLog=Object.entries(DEMO_DATA).map(([e,r])=>({date:today,entity:e,...r,submittedBy:'demo@company.com',submittedAt:new Date().toISOString(),locked:true,remarks:'',action:'SUBMIT'}));
 }
 
-function selectUser(id) {
-  currentUser = USERS.find(u => u.id === id);
-  document.getElementById('user-avatar').textContent = currentUser.avatar;
-  document.getElementById('user-name-display').textContent = currentUser.name;
-  document.getElementById('entry-user-label').textContent = currentUser.name;
-  if (currentUser.entity) document.getElementById('entry-entity').value = currentUser.entity;
-  closeUserModal();
+function splitCSV(line){
+  const cols=[];let cur='',inQ=false;
+  for(const c of line){if(c==='"'){inQ=!inQ;}else if(c===','&&!inQ){cols.push(cur);cur='';}else{cur+=c;}}
+  cols.push(cur);return cols;
 }
 
-// ── RENDER ALL ──────────────────────────────────────────────────────────────
-function renderAll() {
-  const data = loadData(currentDate);
+// ── SUBMIT TO APPS SCRIPT ─────────────────────────────────────────────────────
+async function submitEntry(){
+  const entity=document.getElementById('entry-entity').value;
+  const date=document.getElementById('entry-date').value;
+  if(!entity){showStatus('Select an entity.',true);return;}
+
+  const today=todayStr();
+  // Lock check (non-admin)
+  const existing=sheetsData[date]&&sheetsData[date][entity];
+  if(existing&&existing.locked&&!isAdmin){
+    showStatus('🔒 Already submitted. Only admin can edit locked entries.',true);return;
+  }
+
+  const payload={
+    date,entity,
+    bank:   +document.getElementById('f-bank').value||0,
+    sweep:  +document.getElementById('f-sweep').value||0,
+    fd:     +document.getElementById('f-fd').value||0,
+    inv:    +document.getElementById('f-inv').value||0,
+    brs:    +document.getElementById('f-brs').value||0,
+    ana:    +document.getElementById('f-ana').value||0,
+    reserve:+document.getElementById('f-reserve').value||0,
+    remarks:document.getElementById('f-remarks').value.trim(),
+    submittedBy:currentUser.email,
+    submittedAt:new Date().toISOString(),
+    action: existing&&existing.locked&&isAdmin?'EDIT_ADMIN':'SUBMIT',
+    locked: true,
+  };
+
+  if(isDemoMode||APPS_SCRIPT_URL==='YOUR_APPS_SCRIPT_URL_HERE'){
+    // Demo mode: simulate
+    if(!sheetsData[date]) sheetsData[date]={};
+    sheetsData[date][entity]=payload;
+    auditLog.unshift({...payload});
+    showStatus('✓ Submitted (demo mode — connect Apps Script for real writes)',false);
+    clearForm();renderAll();return;
+  }
+
+  // Real submit
+  document.getElementById('submit-btn').style.display='none';
+  document.getElementById('submit-spinner').style.display='flex';
+  try{
+    const resp=await fetch(APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
+    const result=await resp.json();
+    if(result.status==='ok'){
+      showStatus('✓ Data submitted successfully.',false);
+      clearForm();
+      await doRefresh();
+    }else{
+      throw new Error(result.message||'Unknown error');
+    }
+  }catch(e){
+    showStatus('❌ Submit failed: '+e.message,true);
+  }finally{
+    document.getElementById('submit-btn').style.display='';
+    document.getElementById('submit-spinner').style.display='none';
+  }
+}
+
+// ── LOCK CHECK ON ENTITY CHANGE ───────────────────────────────────────────────
+function onEntityChange(){
+  const entity=document.getElementById('entry-entity').value;
+  const date=document.getElementById('entry-date').value;
+  const existing=sheetsData[date]&&sheetsData[date][entity];
+  const locked=existing&&existing.locked&&!isAdmin;
+  const lockNotice=document.getElementById('lock-notice');
+  const submitBtn=document.getElementById('submit-btn');
+
+  if(locked){
+    lockNotice.style.display='inline-flex';
+    submitBtn.disabled=true;
+    submitBtn.title='Only admin can edit locked submissions';
+    ['f-bank','f-sweep','f-fd','f-inv','f-brs','f-ana','f-reserve','f-remarks'].forEach(id=>{
+      document.getElementById(id).disabled=true;
+    });
+  }else{
+    lockNotice.style.display='none';
+    submitBtn.disabled=false;
+    submitBtn.title='';
+    ['f-bank','f-sweep','f-fd','f-inv','f-brs','f-ana','f-reserve','f-remarks'].forEach(id=>{
+      document.getElementById(id).disabled=false;
+    });
+    // Pre-fill if existing
+    if(existing){
+      setField('f-bank',existing.bank);setField('f-sweep',existing.sweep);
+      setField('f-fd',existing.fd);setField('f-inv',existing.inv);
+      setField('f-brs',existing.brs);setField('f-ana',existing.ana);
+      setField('f-reserve',existing.reserve);
+      document.getElementById('f-remarks').value=existing.remarks||'';
+      updatePreview();
+    }
+  }
+}
+function setField(id,val){document.getElementById(id).value=val||'';}
+
+// ── RENDER ALL ────────────────────────────────────────────────────────────────
+function renderAll(){
+  const today=todayStr();
+  const data=sheetsData[today]||{};
   renderMetrics(data);
   renderTable(data);
   renderCharts(data);
   renderEntryTable(data);
   renderStatusTab(data);
+  if(isAdmin){renderAudit();loadUsers();}
 }
 
-function renderMetrics(data) {
-  let totalBal = 0, totalLiq = 0, totalTreasury = 0, totalInv = 0, totalAna = 0;
-  ENTITIES.forEach(e => {
-    const r = data[e] || {bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
-    const c = compute(r);
-    totalBal += c.total;
-    totalLiq += c.liquid;
-    totalTreasury += c.treasury;
-    totalInv += r.inv;
-    totalAna += r.ana;
+function compute(r){
+  const liquid=+(r.bank+r.sweep+r.brs).toFixed(2);
+  const treasury=+(r.fd+r.inv).toFixed(2);
+  const total=+(liquid+r.ana+treasury+r.reserve).toFixed(2);
+  return{liquid,treasury,total};
+}
+
+function renderMetrics(data){
+  let tb=0,tl=0,tt=0,ta=0;
+  ENTITIES.forEach(e=>{
+    const r=data[e]||{bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
+    const c=compute(r);tb+=c.total;tl+=c.liquid;tt+=c.treasury;ta+=r.ana;
   });
-  const mr = document.getElementById('metric-row');
-  const cards = [
-    {label:'Total Balance', val:'₹ '+totalBal.toFixed(2)+' Cr', sub:'All entities combined'},
-    {label:'Liquid Funds', val:'₹ '+totalLiq.toFixed(2)+' Cr', sub:'Bank + Sweep + BRS'},
-    {label:'Treasury', val:'₹ '+totalTreasury.toFixed(2)+' Cr', sub:'FD + Investment'},
-    {label:'Liquid & MF (ANA)', val:'₹ '+totalAna.toFixed(2)+' Cr', sub:'ANA funds'},
-    {label:'Entities Tracked', val:ENTITIES.length, sub:getSubmissions(currentDate) && Object.keys(getSubmissions(currentDate)).length+' submitted today'},
+  const submitted=ENTITIES.filter(e=>data[e]&&compute(data[e]).total!==0).length;
+  const cards=[
+    {l:'Total balance',v:'₹ '+tb.toFixed(2)+' Cr',s:'All entities'},
+    {l:'Liquid funds',v:'₹ '+tl.toFixed(2)+' Cr',s:'Bank + Sweep + BRS'},
+    {l:'Treasury',v:'₹ '+tt.toFixed(2)+' Cr',s:'FD + Investment'},
+    {l:'Liquid & MF',v:'₹ '+ta.toFixed(2)+' Cr',s:'ANA funds'},
+    {l:'Entities',v:submitted+'/'+ENTITIES.length,s:'submitted today'},
   ];
-  mr.innerHTML = cards.map(c => `<div class="metric-card"><div class="metric-label">${c.label}</div><div class="metric-value">${c.val}</div><div class="metric-sub">${c.sub}</div></div>`).join('');
+  document.getElementById('metric-row').innerHTML=cards.map(c=>
+    `<div class="metric-card"><div class="metric-label">${c.l}</div><div class="metric-value">${c.v}</div><div class="metric-sub">${c.s}</div></div>`
+  ).join('');
 }
 
-function renderTable(data) {
-  const tbody = document.getElementById('main-tbody');
-  let totals = {bank:0,sweep:0,fd:0,inv:0,brs:0,liquid:0,ana:0,treasury:0,reserve:0,total:0};
-  let rows = '';
-  ENTITIES.forEach(e => {
-    const r = data[e] || {bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
-    const c = compute(r);
-    const mov = r.movement || 0;
-    totals.bank += r.bank; totals.sweep += r.sweep; totals.fd += r.fd;
-    totals.inv += r.inv; totals.brs += r.brs; totals.liquid += c.liquid;
-    totals.ana += r.ana; totals.treasury += c.treasury; totals.reserve += r.reserve;
-    totals.total += c.total;
-    const mClass = mov > 0 ? 'movement-pos' : mov < 0 ? 'movement-neg' : 'movement-zero';
-    const mText = mov === 0 ? '-' : (mov > 0 ? '+' : '') + mov.toFixed(2);
-    rows += `<tr data-entity="${e}">
-      <td>${e}</td>
-      <td>${r.bank.toFixed(2)}</td>
-      <td>${r.sweep.toFixed(2)}</td>
-      <td>${r.fd.toFixed(2)}</td>
-      <td>${r.inv.toFixed(2)}</td>
-      <td>${r.brs.toFixed(2)}</td>
-      <td>${c.liquid.toFixed(2)}</td>
-      <td>${r.ana.toFixed(2)}</td>
-      <td>${c.treasury.toFixed(2)}</td>
-      <td>${r.reserve.toFixed(2)}</td>
-      <td><strong>${c.total.toFixed(2)}</strong></td>
-      <td class="${mClass}">${mText}</td>
+function renderTable(data){
+  let totals={bank:0,sweep:0,fd:0,inv:0,brs:0,liquid:0,ana:0,treasury:0,reserve:0,total:0};
+  let rows='';
+  ENTITIES.forEach(e=>{
+    const r=data[e]||{bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
+    const c=compute(r);
+    const locked=r.locked;
+    totals.bank+=r.bank;totals.sweep+=r.sweep;totals.fd+=r.fd;
+    totals.inv+=r.inv;totals.brs+=r.brs;totals.liquid+=c.liquid;
+    totals.ana+=r.ana;totals.treasury+=c.treasury;totals.reserve+=r.reserve;totals.total+=c.total;
+    const lockIcon=locked?'🔒 ':c.total===0?'':'';
+    rows+=`<tr data-entity="${e}">
+      <td>${lockIcon}${e}</td>
+      <td>${r.bank.toFixed(2)}</td><td>${r.sweep.toFixed(2)}</td>
+      <td>${r.fd.toFixed(2)}</td><td>${r.inv.toFixed(2)}</td>
+      <td>${r.brs.toFixed(2)}</td><td>${c.liquid.toFixed(2)}</td>
+      <td>${r.ana.toFixed(2)}</td><td>${c.treasury.toFixed(2)}</td>
+      <td>${r.reserve.toFixed(2)}</td><td><strong>${c.total.toFixed(2)}</strong></td>
+      <td class="mv-zero">—</td>
     </tr>`;
   });
-  rows += `<tr class="total-row">
+  rows+=`<tr class="total-row">
     <td>Total</td>
-    <td>${totals.bank.toFixed(2)}</td>
-    <td>${totals.sweep.toFixed(2)}</td>
-    <td>${totals.fd.toFixed(2)}</td>
-    <td>${totals.inv.toFixed(2)}</td>
-    <td>${totals.brs.toFixed(2)}</td>
-    <td>${totals.liquid.toFixed(2)}</td>
-    <td>${totals.ana.toFixed(2)}</td>
-    <td>${totals.treasury.toFixed(2)}</td>
-    <td>${totals.reserve.toFixed(2)}</td>
-    <td>${totals.total.toFixed(2)}</td>
-    <td>—</td>
+    <td>${totals.bank.toFixed(2)}</td><td>${totals.sweep.toFixed(2)}</td>
+    <td>${totals.fd.toFixed(2)}</td><td>${totals.inv.toFixed(2)}</td>
+    <td>${totals.brs.toFixed(2)}</td><td>${totals.liquid.toFixed(2)}</td>
+    <td>${totals.ana.toFixed(2)}</td><td>${totals.treasury.toFixed(2)}</td>
+    <td>${totals.reserve.toFixed(2)}</td><td>${totals.total.toFixed(2)}</td><td>—</td>
   </tr>`;
-  tbody.innerHTML = rows;
+  document.getElementById('main-tbody').innerHTML=rows;
 }
 
-function renderCharts(data) {
-  const labels = [], totals = [], liquids = [], treasuries = [], anas = [];
-  ENTITIES.forEach(e => {
-    const r = data[e] || {bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
-    const c = compute(r);
-    if (c.total > 0) { labels.push(e); totals.push(c.total); liquids.push(c.liquid); treasuries.push(c.treasury); anas.push(r.ana); }
+function renderCharts(data){
+  const labels=[],totals=[],liquids=[],treasuries=[],anas=[];
+  ENTITIES.forEach(e=>{
+    const r=data[e]||{bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
+    const c=compute(r);
+    if(c.total>0){labels.push(e);totals.push(c.total);liquids.push(c.liquid);treasuries.push(c.treasury);anas.push(r.ana);}
   });
-  // Bar chart
-  if (barChartInst) barChartInst.destroy();
-  barChartInst = new Chart(document.getElementById('barChart'), {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        {label:'Liquid', data: liquids, backgroundColor:'#93c5fd', borderRadius:4},
-        {label:'Treasury', data: treasuries, backgroundColor:'#2563eb', borderRadius:4},
-        {label:'Liquid & MF', data: anas, backgroundColor:'#1e40af', borderRadius:4},
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { x: { stacked: true, grid:{display:false}, ticks:{font:{size:10}} }, y: { stacked: true, grid:{color:'#f1f5f9'}, ticks:{font:{size:10}} } }
-    }
+  if(barChartInst)barChartInst.destroy();
+  barChartInst=new Chart(document.getElementById('barChart'),{
+    type:'bar',data:{labels,datasets:[
+      {label:'Liquid',data:liquids,backgroundColor:'#93c5fd',borderRadius:4},
+      {label:'Treasury',data:treasuries,backgroundColor:'#2563eb',borderRadius:4},
+      {label:'Liquid & MF',data:anas,backgroundColor:'#1e40af',borderRadius:4},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:10}}},
+              y:{stacked:true,grid:{color:'#f1f5f9'},ticks:{font:{size:10}}}}}
   });
-  // Doughnut
-  let sumLiq = liquids.reduce((a,b)=>a+b,0);
-  let sumTreas = treasuries.reduce((a,b)=>a+b,0);
-  let sumAna = anas.reduce((a,b)=>a+b,0);
-  if (doughnutInst) doughnutInst.destroy();
-  doughnutInst = new Chart(document.getElementById('doughnut'), {
-    type: 'doughnut',
-    data: {
-      labels:['Liquid','Treasury','Liquid & MF'],
-      datasets:[{data:[sumLiq,sumTreas,sumAna], backgroundColor:['#93c5fd','#2563eb','#1e40af'], borderWidth:0, hoverOffset:6}]
-    },
-    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, cutout:'65%' }
+  const sL=liquids.reduce((a,b)=>a+b,0),sT=treasuries.reduce((a,b)=>a+b,0),sA=anas.reduce((a,b)=>a+b,0);
+  if(doughnutInst)doughnutInst.destroy();
+  doughnutInst=new Chart(document.getElementById('doughnut'),{
+    type:'doughnut',
+    data:{labels:['Liquid','Treasury','Liquid & MF'],
+      datasets:[{data:[sL,sT,sA],backgroundColor:['#93c5fd','#2563eb','#1e40af'],borderWidth:0,hoverOffset:6}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'65%'}
   });
-  const total = sumLiq + sumTreas + sumAna;
-  document.getElementById('donut-legend').innerHTML = [
-    {label:'Liquid', color:'#93c5fd', val:sumLiq},
-    {label:'Treasury', color:'#2563eb', val:sumTreas},
-    {label:'Liquid & MF', color:'#1e40af', val:sumAna},
-  ].map(l => `<span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:${l.color};"></span>${l.label} ${total>0?(l.val/total*100).toFixed(1)+'%':''}</span>`).join('');
+  const tot=sL+sT+sA;
+  document.getElementById('donut-legend').innerHTML=[
+    {l:'Liquid',c:'#93c5fd',v:sL},{l:'Treasury',c:'#2563eb',v:sT},{l:'Liquid & MF',c:'#1e40af',v:sA}
+  ].map(x=>`<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:${x.c}"></span>${x.l} ${tot>0?(x.v/tot*100).toFixed(1)+'%':''}</span>`).join('');
 }
 
-function renderEntryTable(data) {
-  const tbody = document.getElementById('entry-tbody');
-  tbody.innerHTML = ENTITIES.map(e => {
-    const r = data[e] || {bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
-    const c = compute(r);
+function renderEntryTable(data){
+  const today=todayStr();
+  const rows=ENTITIES.filter(e=>data[e]&&compute(data[e]).total!==0).map(e=>{
+    const r=data[e];const c=compute(r);
+    const canEdit=!r.locked||isAdmin;
     return `<tr>
       <td>${e}</td>
-      <td class="edit-col"><input class="editable-cell" type="number" step="0.01" value="${r.bank}" onchange="inlineUpdate('${e}','bank',this.value)"></td>
-      <td class="edit-col"><input class="editable-cell" type="number" step="0.01" value="${r.sweep}" onchange="inlineUpdate('${e}','sweep',this.value)"></td>
-      <td class="edit-col"><input class="editable-cell" type="number" step="0.01" value="${r.fd}" onchange="inlineUpdate('${e}','fd',this.value)"></td>
-      <td class="edit-col"><input class="editable-cell" type="number" step="0.01" value="${r.inv}" onchange="inlineUpdate('${e}','inv',this.value)"></td>
-      <td class="edit-col"><input class="editable-cell" type="number" step="0.01" value="${r.brs}" onchange="inlineUpdate('${e}','brs',this.value)"></td>
-      <td class="edit-col"><input class="editable-cell" type="number" step="0.01" value="${r.ana}" onchange="inlineUpdate('${e}','ana',this.value)"></td>
-      <td class="edit-col"><input class="editable-cell" type="number" step="0.01" value="${r.reserve}" onchange="inlineUpdate('${e}','reserve',this.value)"></td>
-      <td><strong>${c.total.toFixed(2)}</strong></td>
-      <td><button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;" onclick="deleteEntity('${e}')">✕</button></td>
+      <td>${r.bank.toFixed(2)}</td><td>${r.sweep.toFixed(2)}</td><td>${r.fd.toFixed(2)}</td>
+      <td>${r.inv.toFixed(2)}</td><td>${r.brs.toFixed(2)}</td><td>${r.ana.toFixed(2)}</td>
+      <td>${r.reserve.toFixed(2)}</td><td><strong>${c.total.toFixed(2)}</strong></td>
+      <td class="audit-who">${r.submittedBy||'—'}</td>
+      <td class="audit-time">${r.submittedAt?formatTime2(r.submittedAt):'—'}</td>
+      <td>${r.locked?`<span class="badge badge-green">🔒 Locked</span>`:
+            `<span class="badge badge-amber">Draft</span>`}
+        ${canEdit&&r.locked?`<button class="btn btn-ghost" style="padding:3px 8px;font-size:11px;margin-left:4px" onclick="prefillEdit('${e}','${today}')">Edit</button>`:''}
+      </td>
     </tr>`;
-  }).join('');
+  });
+  document.getElementById('entry-tbody').innerHTML=rows.join('')||'<tr><td colspan="12" style="color:var(--hint);padding:20px;text-align:center">No submissions yet today</td></tr>';
+  const count=rows.length;
+  document.getElementById('entry-count-label').textContent=count+' of '+ENTITIES.length+' entities submitted';
 }
 
-function renderStatusTab(data) {
-  const subs = getSubmissions(currentDate);
-  const grid = document.getElementById('sub-grid');
-  grid.innerHTML = ENTITIES.map(e => {
-    const done = !!subs[e];
+function prefillEdit(entity,date){
+  switchTab('entry',document.querySelectorAll('.tab')[1]);
+  document.getElementById('entry-entity').value=entity;
+  document.getElementById('entry-date').value=date;
+  onEntityChange();
+  document.getElementById('entry-entity').scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+function renderStatusTab(data){
+  document.getElementById('sub-grid').innerHTML=ENTITIES.map(e=>{
+    const r=data[e];const done=r&&compute(r).total!==0;
     return `<div class="sub-card">
       <div class="sub-entity">${e}</div>
-      <div class="sub-status"><span class="status-dot ${done?'status-done':'status-pending'}"></span>${done ? '✓ Submitted '+subs[e] : 'Pending'}</div>
+      <div class="sub-info"><span class="status-dot ${done?'dot-green':'dot-amber'}"></span>
+        ${done?(r.submittedBy||'Submitted'):'Pending'}
+      </div>
+      ${done&&r.submittedAt?`<div class="sub-info" style="margin-top:2px">${formatTime2(r.submittedAt)}</div>`:''}
     </div>`;
   }).join('');
-  const log = document.getElementById('log-tbody');
-  log.innerHTML = ENTITIES.map(e => {
-    const r = data[e] || {bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
-    const c = compute(r);
-    const done = !!subs[e];
+  document.getElementById('log-tbody').innerHTML=ENTITIES.map(e=>{
+    const r=data[e]||{bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
+    const c=compute(r);const done=c.total!==0;
     return `<tr>
       <td>${e}</td>
-      <td style="text-align:right;">${subs[e]||'—'}</td>
-      <td style="text-align:right;">${c.total.toFixed(2)}</td>
-      <td style="text-align:right;"><span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${done?'#dcfce7':'#fef9c3'};color:${done?'#166534':'#713f12'}">${done?'Done':'Pending'}</span></td>
+      <td style="text-align:right">${c.liquid.toFixed(2)}</td>
+      <td style="text-align:right">${c.treasury.toFixed(2)}</td>
+      <td style="text-align:right">${c.total.toFixed(2)}</td>
+      <td>${r.submittedBy||'—'}</td>
+      <td class="audit-time">${r.submittedAt?formatTime2(r.submittedAt):'—'}</td>
+      <td><span class="badge ${done?'badge-green':'badge-amber'}">${done?'Done':'Pending'}</span></td>
     </tr>`;
   }).join('');
 }
 
-// ── INTERACTIONS ─────────────────────────────────────────────────────────────
-function inlineUpdate(entity, field, value) {
-  const data = loadData(currentDate);
-  if (!data[entity]) data[entity] = {bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
-  data[entity][field] = parseFloat(value)||0;
-  saveData(currentDate, data);
-  markSubmission(currentDate, entity);
-  renderAll();
-  showStatus('✓ '+entity+' updated successfully', false);
-}
-
-function deleteEntity(entity) {
-  const data = loadData(currentDate);
-  if (data[entity]) { data[entity] = {bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0}; }
-  saveData(currentDate, data);
-  renderAll();
-}
-
-function saveEntry() {
-  const entity = document.getElementById('entry-entity').value;
-  const date = document.getElementById('entry-date').value;
-  if (!entity) { showStatus('Please select an entity', true); return; }
-  const r = {
-    bank: parseFloat(document.getElementById('f-bank').value)||0,
-    sweep: parseFloat(document.getElementById('f-sweep').value)||0,
-    fd: parseFloat(document.getElementById('f-fd').value)||0,
-    inv: parseFloat(document.getElementById('f-inv').value)||0,
-    brs: parseFloat(document.getElementById('f-brs').value)||0,
-    ana: parseFloat(document.getElementById('f-ana').value)||0,
-    reserve: parseFloat(document.getElementById('f-reserve').value)||0,
-  };
-  const data = loadData(date);
-  data[entity] = r;
-  saveData(date, data);
-  markSubmission(date, entity);
-  renderAll();
-  showStatus('✓ Data saved for '+entity+' on '+formatDate(date), false);
-  clearForm();
-}
-
-function clearForm() {
-  ['f-bank','f-sweep','f-fd','f-inv','f-brs','f-ana','f-reserve'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('preview-total').textContent = 'Total: —';
-}
-
-function updatePreview() {
-  const bank = parseFloat(document.getElementById('f-bank').value)||0;
-  const sweep = parseFloat(document.getElementById('f-sweep').value)||0;
-  const fd = parseFloat(document.getElementById('f-fd').value)||0;
-  const inv = parseFloat(document.getElementById('f-inv').value)||0;
-  const brs = parseFloat(document.getElementById('f-brs').value)||0;
-  const ana = parseFloat(document.getElementById('f-ana').value)||0;
-  const reserve = parseFloat(document.getElementById('f-reserve').value)||0;
-  const c = compute({bank,sweep,fd,inv,brs,ana,reserve});
-  document.getElementById('preview-total').textContent = 'Total: ₹ ' + c.total.toFixed(2) + ' Cr';
-}
-
-function filterTable(q) {
-  document.querySelectorAll('#main-tbody tr').forEach(tr => {
-    const entity = tr.getAttribute('data-entity') || '';
-    tr.style.display = entity.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
+function renderAudit(){
+  const efil=document.getElementById('audit-entity-filter')?.value||'';
+  const dfil=document.getElementById('audit-date-filter')?.value||'';
+  const rows=auditLog.filter(r=>{
+    if(efil&&r.entity!==efil)return false;
+    if(dfil&&r.date!==dfil)return false;
+    return true;
   });
+  const c=r=>compute(r);
+  document.getElementById('audit-tbody').innerHTML=rows.map(r=>`<tr class="audit-row">
+    <td class="audit-time">${r.submittedAt?formatTime2(r.submittedAt):'—'}</td>
+    <td>${r.entity}</td><td>${r.date}</td>
+    <td><span class="badge ${r.action==='EDIT_ADMIN'?'badge-amber':'badge-green'}">${r.action==='EDIT_ADMIN'?'Admin edit':'Submit'}</span></td>
+    <td class="audit-who">${r.submittedBy||'—'}</td>
+    <td>${(r.bank||0).toFixed(2)}</td><td>${(r.sweep||0).toFixed(2)}</td>
+    <td>${(r.fd||0).toFixed(2)}</td><td>${(r.inv||0).toFixed(2)}</td>
+    <td>${(r.brs||0).toFixed(2)}</td><td>${(r.ana||0).toFixed(2)}</td>
+    <td>${(r.reserve||0).toFixed(2)}</td>
+    <td><strong>${c(r).total.toFixed(2)}</strong></td>
+    <td style="color:var(--muted);font-size:12px">${r.remarks||''}</td>
+  </tr>`).join('')||'<tr><td colspan="14" style="color:var(--hint);text-align:center;padding:20px">No audit records</td></tr>';
 }
 
-function switchTab(tab, el) {
-  ['dashboard','entry','status'].forEach(t => document.getElementById('tab-'+t).style.display = 'none');
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-'+tab).style.display = 'block';
-  el.classList.add('active');
+function populateAuditFilter(){
+  // date filter default = today
+  document.getElementById('audit-date-filter').value=todayStr();
 }
 
-// ── MODALS ───────────────────────────────────────────────────────────────────
-function showUserSelect() { document.getElementById('user-modal').classList.add('open'); }
-function closeUserModal() { document.getElementById('user-modal').classList.remove('open'); }
-function openEmailModal() { document.getElementById('email-modal').classList.add('open'); }
-function closeEmailModal() { document.getElementById('email-modal').classList.remove('open'); }
+// ── USER MANAGEMENT (admin) ───────────────────────────────────────────────────
+let usersCache=[];
 
-function addEmail(e) {
-  if (e.key === 'Enter') {
-    const val = e.target.value.trim();
-    if (val && val.includes('@')) {
-      emailList.push(val);
-      renderEmailTags();
-      e.target.value = '';
-    }
+async function loadUsers(){
+  if(!isAdmin||!isConfigured)return;
+  // In a real setup you'd have a Firestore users collection.
+  // For now, show a placeholder row since Firebase Admin SDK can't run in browser.
+  document.getElementById('users-tbody').innerHTML=`
+    <tr><td colspan="5" style="color:var(--muted);text-align:center;padding:16px">
+      User listing requires a backend function. Create users below and manage them in <a href="https://console.firebase.google.com" target="_blank" style="color:var(--blue)">Firebase Console → Authentication</a>.
+    </td></tr>`;
+}
+
+async function createUser(){
+  if(!isConfigured){showStatus('Firebase not configured — cannot create real users.',true);return;}
+  const email=document.getElementById('new-email').value.trim();
+  const name=document.getElementById('new-name').value.trim();
+  const role=document.getElementById('new-role').value;
+  if(!email||!name){showStatus('Email and name required.',true);return;}
+
+  // Generate temp password
+  const tempPass=Math.random().toString(36).slice(-8)+'A1!';
+
+  try{
+    const cred=await firebase.auth().createUserWithEmailAndPassword(email,tempPass);
+    await cred.user.updateProfile({displayName:name});
+    // Show temp credentials
+    document.getElementById('tp-email').textContent=email;
+    document.getElementById('tp-pass').textContent=tempPass;
+    document.getElementById('tp-role').textContent=role;
+    document.getElementById('temppass-modal').classList.add('open');
+    document.getElementById('new-email').value='';
+    document.getElementById('new-name').value='';
+    showStatus('✓ User created: '+email,false);
+    // If admin role, you'd save to Firestore here: db.collection('users').doc(cred.user.uid).set({role})
+    // For now, add admin emails to ADMIN_EMAILS array in config
+    if(role==='admin') showStatus('✓ Created. Add "'+email+'" to ADMIN_EMAILS in the config to grant admin access.',false);
+  }catch(e){
+    showStatus('❌ '+firebaseErrMsg(e.code),true);
   }
 }
-function removeEmail(i) { emailList.splice(i,1); renderEmailTags(); }
-function renderEmailTags() {
-  document.getElementById('email-tags').innerHTML = emailList.map((e,i) =>
-    `<span class="tag">${e}<button onclick="removeEmail(${i})">×</button></span>`).join('');
-}
 
-function sendReport() {
-  if (emailList.length === 0) { showStatus('Please add at least one recipient email', true); closeEmailModal(); return; }
-  const subject = document.getElementById('email-subject').value;
-  const body = document.getElementById('email-body').value;
-  // Build mailto with report data
-  const data = loadData(currentDate);
-  let tableText = 'Daily Bank Balance Report — ' + formatDate(currentDate) + '\n\n';
-  tableText += 'Entity\tBank\tSweep TD\tFD\tInvestment\tBRS\tLiquid\tLiquid&MF\tTreasury\tReserve\tTotal\n';
-  ENTITIES.forEach(e => {
-    const r = data[e] || {bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
-    const c = compute(r);
-    tableText += `${e}\t${r.bank}\t${r.sweep}\t${r.fd}\t${r.inv}\t${r.brs}\t${c.liquid}\t${r.ana}\t${c.treasury}\t${r.reserve}\t${c.total}\n`;
+// ── UI HELPERS ────────────────────────────────────────────────────────────────
+function filterTable(q){
+  document.querySelectorAll('#main-tbody tr').forEach(tr=>{
+    const e=tr.getAttribute('data-entity')||'';
+    tr.style.display=e.toLowerCase().includes(q.toLowerCase())?'':'none';
   });
-  const mailtoLink = `mailto:${emailList.join(',')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body+'\n\n'+tableText)}`;
-  window.open(mailtoLink);
-  closeEmailModal();
-  showStatus('✓ Email client opened with report for '+emailList.length+' recipient(s)', false);
 }
 
-// ── EXPORT EXCEL ─────────────────────────────────────────────────────────────
-function exportExcel() {
-  const data = loadData(currentDate);
-  const rows = [['Entity','Bank (a)','Sweep TD (b)','FD (c)','Investment (d)','BRS (e)','Liquid (f)','Liquid & MF (g)','Treasury (h)','Reserve Fund (i)','Total (j)','Movement']];
-  ENTITIES.forEach(e => {
-    const r = data[e] || {bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
-    const c = compute(r);
-    rows.push([e, r.bank, r.sweep, r.fd, r.inv, r.brs, c.liquid, r.ana, c.treasury, r.reserve, c.total, r.movement||0]);
+function switchTab(tab,el){
+  ['dashboard','entry','status','audit','users'].forEach(t=>{
+    const el2=document.getElementById('tab-'+t);
+    if(el2)el2.style.display='none';
   });
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = rows[0].map(() => ({wch:14}));
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Balance '+currentDate);
-  XLSX.writeFile(wb, 'DailyBankBalance_'+currentDate+'.xlsx');
-  showStatus('✓ Excel file downloaded successfully', false);
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  const target=document.getElementById('tab-'+tab);
+  if(target)target.style.display='block';
+  if(el)el.classList.add('active');
+  if(tab==='audit')renderAudit();
 }
 
-function showStatus(msg, isError) {
-  const el = document.getElementById('status-bar');
-  el.textContent = msg;
-  el.className = 'status-bar show' + (isError ? ' error' : '');
-  setTimeout(() => el.classList.remove('show'), 4000);
+function updatePreview(){
+  const v=id=>+document.getElementById(id).value||0;
+  const r={bank:v('f-bank'),sweep:v('f-sweep'),fd:v('f-fd'),inv:v('f-inv'),brs:v('f-brs'),ana:v('f-ana'),reserve:v('f-reserve')};
+  const c=compute(r);
+  document.getElementById('preview-box').textContent=`Total: ₹ ${c.total.toFixed(2)} Cr · Liquid: ₹ ${c.liquid.toFixed(2)} Cr · Treasury: ₹ ${c.treasury.toFixed(2)} Cr`;
+}
+
+function clearForm(){
+  ['f-bank','f-sweep','f-fd','f-inv','f-brs','f-ana','f-reserve'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-remarks').value='';
+  document.getElementById('preview-box').textContent='Total: — · Liquid: — · Treasury: —';
+  document.getElementById('lock-notice').style.display='none';
+  document.getElementById('submit-btn').disabled=false;
+}
+
+function showStatus(msg,isErr){
+  const el=document.getElementById('status-bar');
+  el.textContent=msg;
+  el.className='status-bar show '+(isErr?'status-err':'status-ok');
+  setTimeout(()=>el.classList.remove('show'),6000);
+}
+
+function setSyncState(state,text){
+  const el=document.getElementById('sync-chip');
+  el.textContent=text;
+  el.className='sync-chip '+(state==='ok'?'sync-ok':state==='err'?'sync-err':'sync-loading');
+}
+
+function exportExcel(){
+  const today=todayStr();
+  const data=sheetsData[today]||{};
+  const rows=[['Entity','Bank (a)','Sweep TD (b)','FD (c)','Investment (d)','BRS (e)','Liquid (f)','Liquid & MF (g)','Treasury (h)','Reserve (i)','Total (j)','Submitted by','Submitted at']];
+  ENTITIES.forEach(e=>{
+    const r=data[e]||{bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0,submittedBy:'',submittedAt:''};
+    const c=compute(r);
+    rows.push([e,r.bank,r.sweep,r.fd,r.inv,r.brs,c.liquid,r.ana,c.treasury,r.reserve,c.total,r.submittedBy,r.submittedAt]);
+  });
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Balance_'+today);
+  XLSX.writeFile(wb,'BankBalance_'+today+'.xlsx');
+  showStatus('✓ Excel downloaded',false);
+}
+
+// ── DATE UTILS ────────────────────────────────────────────────────────────────
+function todayStr(){return new Date().toISOString().split('T')[0];}
+function formatDate(d){return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
+function formatTime(d){return d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});}
+function formatTime2(iso){
+  try{const d=new Date(iso);return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});}
+  catch{return iso;}
 }
 </script>
 </body>
