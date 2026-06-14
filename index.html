@@ -790,10 +790,12 @@ const COL_FIELDS=[
 ];
 // ══ CHART COLOURS ════════════════════════════════════════════════════
 const PAL=['#3b5bdb','#0ca678','#f08c00','#d6336c','#7048e8','#0c8599','#e8590c','#1098ad','#2f9e44','#862e9c','#c92a2a','#5c7cfa','#20c997','#fd7e14','#e64980'];
+// ══ UTILITIES ════════════════════════════════════════════════════════
+function todayStr(){const d=new Date();return d.toISOString().split('T')[0];}
+
 // ══ STATE ════════════════════════════════════════════════════════════
 let currentUser=null,isAdmin=false;
 let sheetsData={},auditLog=[];
-const todayStr = new Date().toISOString().split('T')[0];
 let dashDate=todayStr();
 let arTimer=null,arCountTimer=null,arCount=5;
 let bChart,dChart,hChart,rChart,cmpChart2;
