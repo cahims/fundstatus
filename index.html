@@ -949,71 +949,97 @@ async function doRefresh(){
 function parseSheetCSV(csv){
   const lines=csv.trim().split('\n').filter(l=>l.trim());
   if(lines.length<2){sheetsData={};auditLog=[];return;}
-  // Store raw CSV lines for full debug inspection
-  window._csvRaw=csv;
+
   window._csvLine0=lines[0];
   window._csvLine1=lines.length>1?lines[1]:'';
-  console.log('=== CSV HEADER ROW ===');
-  console.log(lines[0]);
-  const rawHdr=lines[0].split(',').map(h=>h.replace(/"/g,'').trim());
+  const sep=lines[0].includes('\t')?'\t':',';
+  const rawHdr=lines[0].replace(/^\uFEFF/,'').split(sep)
+    .map(h=>h.replace(/"/g,'').replace(/\r/g,'').trim());
   const hdr=rawHdr.map(h=>h.toLowerCase());
 
-  // ── Store raw headers for debug panel ──
   window._csvRawHeaders=rawHdr;
   window._csvRowCount=lines.length-1;
 
-  // Exact column aliases matching: Date, Entity, Bank Balance, Sweep Deposit,
-  // Fixed Deposits, Mutual Funds, Bonds/Deb, BRS, Reserve Fund,
-  // Restricted Fund, Locked Funds, Remarks, Submitted By, Submitted By Name,
-  // Submitted At, Locked, Audit Action
-  const aliases={
-    date:        ['date','dt'],
-    entity:      ['entity','company'],
+  console.log('CSV HEADERS ('+rawHdr.length+'):', JSON.stringify(rawHdr));
+  console.log('CSV FIRST ROW:', lines[1]||'none');
+
+  // Build index map directly from actual headers — no alias guessing
+  // Maps internal key → column index
+  const colIdx={};
+  hdr.forEach((h,i)=>{
+    // Store by exact header
+    colIdx[h]=i;
+    // Also store cleaned version (remove spaces/slashes)
+    colIdx[h.replace(/[\s\/\-]+/g,'_')]=i;
+    colIdx[h.replace(/[\s\/\-]+/g,'')]=i;
+  });
+
+  // Key resolver: tries multiple name variants for each field
+  const FIELDS={
+    date:        ['date'],
+    entity:      ['entity'],
     bank:        ['bank balance','bank_balance','bank'],
     sweep:       ['sweep deposit','sweep_deposit','sweep'],
-    fd:          ['fixed deposits','fixed_deposits','fixed deposit','fd'],
-    mf:          ['mutual funds','mutual_funds','mutual fund','mf'],
-    bonds:       ['bonds/deb','bonds_deb','bonds debentures','bonds/debentures','bonds','bond'],
+    fd:          ['fixed deposits','fixed_deposits','fd'],
+    mf:          ['mutual funds','mutual_funds','mf'],
+    bonds:       ['bonds/deb','bondsdeb','bonds_deb','bonds'],
     brs:         ['brs'],
     reserve:     ['reserve fund','reserve_fund','reserve'],
     restricted:  ['restricted fund','restricted_fund','restricted'],
     locked_funds:['locked funds','locked_funds','locked fund'],
-    submitted_by:     ['submitted by','submitted_by','submittedby'],
-    submitted_by_name:['submitted by name','submitted_by_name','submittedbyname'],
-    submitted_at:     ['submitted at','submitted_at','submittedat'],
-    locked:      ['locked','is_locked'],
-    remarks:     ['remarks','remark','notes'],
-    audit_action:['audit action','audit_action','action'],
+    submitted_by:     ['submitted by','submitted_by'],
+    submitted_by_name:['submitted by name','submitted_by_name'],
+    submitted_at:     ['submitted at','submitted_at'],
+    locked:      ['locked'],
+    remarks:     ['remarks'],
+    audit_action:['audit action','audit_action'],
   };
+
   const idx=k=>{
-    const list=aliases[k]||[k];
-    for(const a of list){const i=hdr.indexOf(a);if(i>=0)return i;}
+    const variants=FIELDS[k]||[k];
+    for(const v of variants){
+      // Try exact, then cleaned versions
+      const checks=[v, v.replace(/[\s\/]+/g,'_'), v.replace(/[\s\/]+/g,'')];
+      for(const c of checks){
+        if(colIdx[c]!==undefined)return colIdx[c];
+        if(colIdx[c.toLowerCase()]!==undefined)return colIdx[c.toLowerCase()];
+      }
+    }
     return -1;
   };
 
-  // ── Store column mapping for debug panel ──
-  window._csvColMap={};
-  ['date','entity','bank','sweep','fd','mf','bonds','brs','reserve','restricted','locked_funds','submitted_by','submitted_by_name','submitted_at','locked','remarks','audit_action']
-    .forEach(k=>{const i=idx(k);window._csvColMap[k]={col:i,header:i>=0?rawHdr[i]:'NOT FOUND'};});
+  // Log resolved indices
+  const resolvedMap={};
+  Object.keys(FIELDS).forEach(k=>{
+    const i=idx(k);
+    resolvedMap[k]={col:i,header:i>=0?rawHdr[i]:'NOT FOUND'};
+  });
+  console.log('COLUMN MAP:', JSON.stringify(resolvedMap));
+  window._csvColMap=resolvedMap;
 
   sheetsData={};auditLog=[];
   for(let i=1;i<lines.length;i++){
-    const cols=splitCSV(lines[i]);if(cols.length<2)continue;
-    const date=cl(cols,idx,'date'),entity=cl(cols,idx,'entity').toUpperCase();
+    const cols=lines[i].replace(/\r/g,'').split(sep).map(c=>c.replace(/"/g,'').trim());
+    if(cols.length<2)continue;
+    const cv=k=>cols[idx(k)]!==undefined?(cols[idx(k)]||'').replace(/"/g,'').trim():'';
+    const nv=k=>parseFloat(cv(k))||0;
+    const date=cv('date'), entity=cv('entity').toUpperCase();
     if(!date||!entity)continue;
     const row={
-      bank:n(cols,idx,'bank'), sweep:n(cols,idx,'sweep'), fd:n(cols,idx,'fd'),
-      mf:n(cols,idx,'mf'), bonds:n(cols,idx,'bonds'), brs:n(cols,idx,'brs'),
-      reserve:n(cols,idx,'reserve'), restricted:n(cols,idx,'restricted'),
-      locked_funds:n(cols,idx,'locked_funds'),
-      submittedBy:cl(cols,idx,'submitted_by'),
-      submittedByName:cl(cols,idx,'submitted_by_name')||cl(cols,idx,'submitted_by'),
-      submittedAt:cl(cols,idx,'submitted_at'),
-      locked:['true','1'].includes(cl(cols,idx,'locked').toLowerCase()),
-      remarks:cl(cols,idx,'remarks'),
-      action:cl(cols,idx,'audit_action')||'SUBMIT',
+      bank:nv('bank'), sweep:nv('sweep'), fd:nv('fd'),
+      mf:nv('mf'), bonds:nv('bonds'), brs:nv('brs'),
+      reserve:nv('reserve'), restricted:nv('restricted'),
+      locked_funds:nv('locked_funds'),
+      submittedBy:cv('submitted_by'),
+      submittedByName:cv('submitted_by_name')||cv('submitted_by'),
+      submittedAt:cv('submitted_at'),
+      locked:['true','1'].includes(cv('locked').toLowerCase()),
+      remarks:cv('remarks'),
+      action:cv('audit_action')||'SUBMIT',
     };
-    CUSTOM_COLS.forEach(c=>{row[c.key]=cl(cols,idx,c.key);});
+    // Log first data row parse result
+    if(i===1)console.log('FIRST ROW PARSED:', entity, date, JSON.stringify({bank:row.bank,sweep:row.sweep,fd:row.fd,mf:row.mf,bonds:row.bonds,brs:row.brs}));
+    CUSTOM_COLS.forEach(c=>{row[c.key]=cv(c.key);});
     if(!sheetsData[date])sheetsData[date]={};
     sheetsData[date][entity]=row;
     auditLog.push({date,entity,...row});
@@ -1883,7 +1909,7 @@ function buildDataContext(){
     });
   }
   return lines.join('\n');
-}https://github.com/cahims/fundstatus/blob/main/index.html
+}
 
 function showAILoading(on){
   $('ai-loading').style.display=on?'block':'none';
