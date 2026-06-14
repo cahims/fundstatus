@@ -793,6 +793,7 @@ const PAL=['#3b5bdb','#0ca678','#f08c00','#d6336c','#7048e8','#0c8599','#e8590c'
 // ══ STATE ════════════════════════════════════════════════════════════
 let currentUser=null,isAdmin=false;
 let sheetsData={},auditLog=[];
+const todayStr = new Date().toISOString().split('T')[0];
 let dashDate=todayStr();
 let arTimer=null,arCountTimer=null,arCount=5;
 let bChart,dChart,hChart,rChart,cmpChart2;
