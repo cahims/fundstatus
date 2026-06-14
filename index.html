@@ -948,6 +948,14 @@ async function doRefresh(){
 function parseSheetCSV(csv){
   const lines=csv.trim().split('\n').filter(l=>l.trim());
   if(lines.length<2){sheetsData={};auditLog=[];return;}
+  // Store raw CSV lines for full debug inspection
+  window._csvRaw=csv;
+  window._csvLine0=lines[0];
+  window._csvLine1=lines.length>1?lines[1]:'';
+  console.log('=== CSV HEADER ROW ===');
+  console.log(lines[0]);
+  console.log('=== CSV FIRST DATA ROW ===');
+  console.log(lines[1]||'(none)');
   const rawHdr=lines[0].split(',').map(h=>h.replace(/"/g,'').trim());
   const hdr=rawHdr.map(h=>h.toLowerCase());
 
@@ -1016,50 +1024,62 @@ function showCSVDebug(){
   const hdr=window._csvRawHeaders||[];
   const map=window._csvColMap||{};
   const rows=window._csvRowCount||0;
+  const rawLine0=window._csvLine0||'(not loaded — click Refresh first)';
+  const rawLine1=window._csvLine1||'(no data rows)';
   const fields=['date','entity','bank','sweep','fd','mf','bonds','brs','reserve','restricted','locked_funds','submitted_by','submitted_by_name','submitted_at','locked','remarks','audit_action'];
   const tableRows=fields.map(f=>{
     const m=map[f]||{col:-1,header:'NOT FOUND'};
     const ok=m.col>=0;
     return`<tr style="background:${ok?'#f0fdf4':'#fff5f5'}">
-      <td style="font-weight:700;color:${ok?'var(--green)':'var(--red)'}">${ok?'✅':'❌'}</td>
-      <td style="font-weight:700">${f}</td>
-      <td style="color:var(--muted)">${m.header}</td>
-      <td style="color:var(--hint)">${m.col>=0?'col '+m.col:'—'}</td>
+      <td style="font-weight:700;color:${ok?'var(--green)':'var(--red)'};padding:5px 8px">${ok?'✅':'❌'}</td>
+      <td style="font-weight:700;padding:5px 8px">${f}</td>
+      <td style="color:var(--muted);padding:5px 8px">${m.header}</td>
+      <td style="color:var(--hint);padding:5px 8px">${m.col>=0?'col '+m.col:'—'}</td>
     </tr>`;
   }).join('');
   const allHdrHtml=hdr.map((h,i)=>`<span style="display:inline-block;background:#f0f2f8;border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:11px;margin:2px"><strong>${i}</strong>: ${h}</span>`).join('');
-
-  // Show first data row values
   const data=sheetsData[dashDate]||sheetsData[Object.keys(sheetsData)[0]]||{};
   const firstEntity=Object.keys(data)[0];
   const sample=firstEntity?data[firstEntity]:null;
   const sampleHtml=sample?fields.slice(0,9).map(f=>{
-    const v=sample[f]||sample[f.replace(/_([a-z])/g,(_,c)=>c.toUpperCase())]||0;
-    return`<tr><td style="font-weight:700">${f}</td><td>${v}</td></tr>`;
-  }).join(''):'<tr><td colspan="2" style="color:var(--hint)">No data for current date</td></tr>';
+    const v=sample[f]!==undefined?sample[f]:(sample[f.replace(/_([a-z])/g,(_,c)=>c.toUpperCase())]||0);
+    return`<tr><td style="font-weight:700;padding:4px 8px">${f}</td><td style="padding:4px 8px">${v}</td></tr>`;
+  }).join(''):'<tr><td colspan="2" style="color:var(--hint);padding:8px">No data for current date</td></tr>';
 
   const w=document.createElement('div');
   w.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center';
-  w.innerHTML=`<div style="background:#fff;border-radius:14px;padding:24px;width:700px;max-width:96vw;max-height:90vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,.3)">
+  w.innerHTML=`<div style="background:#fff;border-radius:14px;padding:24px;width:780px;max-width:96vw;max-height:90vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,.3)">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div style="font-size:15px;font-weight:900">🔍 CSV Debug — Column Mapping</div>
       <button onclick="this.closest('div[style*=fixed]').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted)">×</button>
     </div>
     <div style="background:#f8f9fc;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px">
-      <strong>${rows}</strong> data rows · <strong>${hdr.length}</strong> columns in sheet
+      <strong>${rows}</strong> data rows · <strong>${hdr.length}</strong> columns detected
     </div>
-    <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Raw sheet headers</div>
-    <div style="margin-bottom:16px;line-height:2">${allHdrHtml||'<span style="color:var(--hint)">No headers loaded yet</span>'}</div>
-    <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Column mapping</div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">⬛ RAW CSV HEADER LINE (copy this and share)</div>
+    <div style="background:#1a1a2e;color:#a6e22e;border-radius:8px;padding:12px 14px;font-family:monospace;font-size:12px;word-break:break-all;margin-bottom:4px;line-height:1.9;user-select:all">${rawLine0}</div>
+    <button onclick="navigator.clipboard.writeText(window._csvLine0||'')" style="font-size:11px;background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;margin-bottom:14px;color:var(--muted)">📋 Copy header row</button>
+
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">🔵 RAW CSV FIRST DATA ROW</div>
+    <div style="background:#1a1a2e;color:#66d9e8;border-radius:8px;padding:12px 14px;font-family:monospace;font-size:12px;word-break:break-all;margin-bottom:14px;line-height:1.9">${rawLine1}</div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Parsed header chips</div>
+    <div style="margin-bottom:16px;line-height:2">${allHdrHtml||'<span style="color:var(--hint)">None — CSV may not be loading</span>'}</div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Column mapping</div>
     <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:16px">
       <thead><tr style="background:#f8f9fc"><th style="padding:6px 8px;text-align:left">Status</th><th style="padding:6px 8px;text-align:left">Expected key</th><th style="padding:6px 8px;text-align:left">Matched header</th><th style="padding:6px 8px;text-align:left">Position</th></tr></thead>
       <tbody>${tableRows}</tbody>
     </table>
-    ${firstEntity?`<div style="margin-bottom:6px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Sample parsed values — ${firstEntity}</div>
-    <table style="width:100%;font-size:12px;border-collapse:collapse">
-      <thead><tr style="background:#f8f9fc"><th style="padding:6px 8px;text-align:left">Field</th><th style="padding:6px 8px;text-align:left">Value</th></tr></thead>
+    ${firstEntity?`<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Sample parsed values — ${firstEntity}</div>
+    <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:14px">
+      <thead><tr style="background:#f8f9fc"><th style="padding:6px 8px;text-align:left">Field</th><th style="padding:6px 8px;text-align:left">Parsed value</th></tr></thead>
       <tbody>${sampleHtml}</tbody>
     </table>`:''}
+    <div style="padding:12px 14px;background:var(--amber-lt);border:1px solid var(--amber-bd);border-radius:8px;font-size:12px;color:#7c5a00;line-height:1.6">
+      💡 <strong>Next step:</strong> Copy the green header row above and share it — the column aliases will be updated to match your exact sheet headers.
+    </div>
   </div>`;
   document.body.appendChild(w);
 }
