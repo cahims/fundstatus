@@ -335,14 +335,29 @@ th.cmp-diff{background:#fff9db;color:var(--amber)}
 
     <!-- ═══ DASHBOARD ═══ -->
     <div id="tab-dashboard">
-      <div class="filter-bar">
-        <label>View date</label>
+      <div class="filter-bar" style="flex-wrap:wrap;gap:10px">
+        <label>Date</label>
         <input type="date" id="dash-date" onchange="onDashDateChange()">
         <button class="btn btn-ghost btn-sm" onclick="setDashToday()">Today</button>
-        <button class="btn btn-ghost btn-sm" onclick="shiftDate(-1)">◀ Prev</button>
-        <button class="btn btn-ghost btn-sm" onclick="shiftDate(1)">Next ▶</button>
+        <button class="btn btn-ghost btn-sm" onclick="shiftDate(-1)">◀</button>
+        <button class="btn btn-ghost btn-sm" onclick="shiftDate(1)">▶</button>
         <strong id="dash-date-label" style="font-size:13px;color:var(--text)"></strong>
-        <span style="margin-left:auto;font-size:11px;color:var(--hint)" id="data-src-label"></span>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <label style="font-size:11px;font-weight:700;color:var(--muted)">Filter Entities</label>
+          <div style="position:relative">
+            <button class="btn btn-ghost btn-sm" onclick="toggleEntityFilter()" id="entity-filter-btn">
+              🏢 <span id="entity-filter-label">All Entities</span> ▾
+            </button>
+            <div id="entity-filter-dropdown" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.12);z-index:200;min-width:220px;padding:10px">
+              <div style="display:flex;gap:6px;margin-bottom:8px">
+                <button class="btn btn-blue btn-sm" style="flex:1;font-size:11px" onclick="selectAllEntities()">Select All</button>
+                <button class="btn btn-ghost btn-sm" style="flex:1;font-size:11px" onclick="clearAllEntities()">Clear</button>
+              </div>
+              <div id="entity-filter-list" style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
+            </div>
+          </div>
+          <span style="font-size:11px;color:var(--hint)" id="data-src-label"></span>
+        </div>
       </div>
 
       <div id="metric-row-top"></div>
@@ -1263,7 +1278,65 @@ function buildTableHeader(){
   '</tr>';
 }
 
-// ── DATE FILTER ────────────────────────────────────────────────────────
+// ── ENTITY FILTER ──────────────────────────────────────────────────────
+let selectedEntities=new Set(); // empty = all selected
+
+function getActiveEntities(){
+  return selectedEntities.size===0?[...ENTITIES]:[...ENTITIES].filter(e=>selectedEntities.has(e));
+}
+function toggleEntityFilter(){
+  const dd=$('entity-filter-dropdown');
+  dd.style.display=dd.style.display==='none'?'block':'none';
+  if(dd.style.display==='block')renderEntityFilterList();
+}
+function renderEntityFilterList(){
+  const list=$('entity-filter-list');
+  list.innerHTML=ENTITIES.map(e=>{
+    const checked=selectedEntities.size===0||selectedEntities.has(e);
+    return`<label style="display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;transition:background .1s" onmouseover="this.style.background='#f4f5fa'" onmouseout="this.style.background=''">
+      <input type="checkbox" ${checked?'checked':''} onchange="toggleEntityCheck('${e}',this.checked)" style="accent-color:var(--blue);width:14px;height:14px">
+      ${e}
+    </label>`;
+  }).join('');
+}
+function toggleEntityCheck(entity,checked){
+  if(selectedEntities.size===0){
+    // Was "all" — now explicitly select all except the unchecked one
+    ENTITIES.forEach(e=>{ if(e!==entity)selectedEntities.add(e); });
+  } else {
+    checked?selectedEntities.add(entity):selectedEntities.delete(entity);
+    // If all selected, reset to "all" mode
+    if(selectedEntities.size===ENTITIES.length)selectedEntities=new Set();
+  }
+  updateEntityFilterLabel();
+  renderAll();
+}
+function selectAllEntities(){
+  selectedEntities=new Set();
+  updateEntityFilterLabel();
+  renderEntityFilterList();
+  renderAll();
+}
+function clearAllEntities(){
+  // Select none = show first entity only as placeholder
+  selectedEntities=new Set([ENTITIES[0]]);
+  updateEntityFilterLabel();
+  renderEntityFilterList();
+  renderAll();
+}
+function updateEntityFilterLabel(){
+  const lbl=$('entity-filter-label');
+  if(!lbl)return;
+  if(selectedEntities.size===0)lbl.textContent='All Entities';
+  else if(selectedEntities.size===1)lbl.textContent=[...selectedEntities][0];
+  else lbl.textContent=selectedEntities.size+' Entities';
+}
+// Close dropdown on outside click
+document.addEventListener('click',e=>{
+  const dd=$('entity-filter-dropdown');
+  const btn=$('entity-filter-btn');
+  if(dd&&!dd.contains(e.target)&&btn&&!btn.contains(e.target))dd.style.display='none';
+});
 function onDashDateChange(){dashDate=$('dash-date').value||todayStr();updateDashLabel();renderAll();}
 function setDashToday(){dashDate=todayStr();$('dash-date').value=dashDate;updateDashLabel();renderAll();}
 function shiftDate(d){
@@ -1291,62 +1364,43 @@ function renderAll(){
 
 // ── METRICS ────────────────────────────────────────────────────────────
 function renderMetrics(data){
-  const has=ENTITIES.some(e=>data[e]&&compute(data[e]).total!==0);
-  const emptyHtml=`<div style="grid-column:span 6" class="empty-state"><div class="ei">📭</div><div class="em">No data for ${fmtDate(dashDate)}</div><div class="es">Select a different date or submit balance entries</div></div>`;
+  // Apply entity filter
+  const active=getActiveEntities();
+  const has=active.some(e=>data[e]&&compute(data[e]).total!==0);
+  const emptyHtml=`<div style="grid-column:span 5" class="empty-state"><div class="ei">📭</div><div class="em">No data for ${fmtDate(dashDate)}</div><div class="es">Select a different date or submit balance entries</div></div>`;
   if(!has){$('metric-row-top').innerHTML='';$('metric-row').innerHTML=emptyHtml;return;}
 
-  // Aggregate all fields
-  let tBank=0,tSweep=0,tFD=0,tMF=0,tBonds=0,tBRS=0;
-  let tt=0,tav=0,tinv=0,tliq=0,tres=0,trest=0,tlk=0;
-  ENTITIES.forEach(e=>{
-    const r=data[e]||{};const c=compute(r);
-    tBank+=(r.bank||0);tSweep+=(r.sweep||0);tFD+=(r.fd||0);
-    tMF+=(r.mf||0);tBonds+=(r.bonds||0);tBRS+=(r.brs||0);
-    tt+=c.total;tav+=c.available;tinv+=c.investments;tliq+=c.liquid;
-    tres+=(r.reserve||0);trest+=(r.restricted||0);tlk+=(r.locked_funds||0);
+  let tTotal=0,tAvail=0,tLocked=0,tImmediate=0,tInvest=0;
+  active.forEach(e=>{
+    const r=data[e]||{};
+    const c=compute(r);
+    tTotal   +=c.total;
+    tAvail   +=c.available;
+    tLocked  +=(r.reserve||0)+(r.restricted||0)+(r.locked_funds||0);
+    tImmediate+=(r.bank||0)+(r.sweep||0);
+    tInvest  +=(r.mf||0)+(r.fd||0)+(r.bonds||0);
   });
-  const sub=ENTITIES.filter(e=>data[e]&&compute(data[e]).total!==0).length;
+  const sub=active.filter(e=>data[e]&&compute(data[e]).total!==0).length;
+  const filterNote=active.length===ENTITIES.length?'All entities':''+active.length+' of '+ENTITIES.length+' entities';
 
-  // ROW 1 — Summary KPIs (3 wide cards)
-  const topCards=[
-    {l:'Total Balance',v:'₹ '+tt.toFixed(2)+' Cr',s:'All entities combined',cl:'mc-blue',i:'🏦'},
-    {l:'Available Funds',v:'₹ '+tav.toFixed(2)+' Cr',s:'Total − Reserve − Restricted − Locked',cl:'mc-green',i:'✅'},
-    {l:'Entities',v:sub+' / '+ENTITIES.length,s:'submitted for this date',cl:'mc-red',i:'🏢'},
-  ];
-  $('metric-row-top').innerHTML=
-    `<div class="metric-section-label">📊 Summary</div>`+
-    `<div class="metric-row-wide">`+
-    topCards.map(c=>`<div class="metric-card ${c.cl}"><div class="metric-icon">${c.i}</div><div class="metric-label">${c.l}</div><div class="metric-value">${c.v}</div><div class="metric-sub">${c.s}</div></div>`).join('')+
-    `</div>`;
-
-  // ROW 2 — 6 detailed breakdown cards
-  const detailCards=[
-    {l:'Bank Balance',v:'₹ '+tBank.toFixed(2)+' Cr',s:'Current account balances',cl:'mc-blue',i:'🏛'},
-    {l:'Sweep Deposit',v:'₹ '+tSweep.toFixed(2)+' Cr',s:'Overnight sweep accounts',cl:'mc-teal',i:'🔄'},
-    {l:'Fixed Deposits',v:'₹ '+tFD.toFixed(2)+' Cr',s:'FD investments',cl:'mc-amber',i:'📋'},
-    {l:'Mutual Funds',v:'₹ '+tMF.toFixed(2)+' Cr',s:'MF investments',cl:'mc-violet',i:'📈'},
-    {l:'Bonds / Deb',v:'₹ '+tBonds.toFixed(2)+' Cr',s:'Bond & debenture holdings',cl:'mc-green',i:'📜'},
-    {l:'BRS Balance',v:'₹ '+tBRS.toFixed(2)+' Cr',s:'Bank reconciliation statement',cl:'mc-teal',i:'⚖️'},
+  const cards=[
+    {l:'Total Balance',    v:'₹ '+tTotal.toFixed(2)+' Cr',    s:filterNote,                            cl:'mc-blue',   i:'🏦'},
+    {l:'Available Funds',  v:'₹ '+tAvail.toFixed(2)+' Cr',    s:'Total − Reserve − Restricted − Locked',cl:'mc-green',  i:'✅'},
+    {l:'Locked / Reserved',v:'₹ '+tLocked.toFixed(2)+' Cr',   s:'Reserve + Restricted + Locked Funds',  cl:'mc-red',    i:'🔒'},
+    {l:'Immediate Use',    v:'₹ '+tImmediate.toFixed(2)+' Cr', s:'Bank Balance + Sweep Deposit',         cl:'mc-teal',   i:'⚡'},
+    {l:'Investments',      v:'₹ '+tInvest.toFixed(2)+' Cr',   s:'MF + FD + Bonds/Debentures',          cl:'mc-amber',  i:'📈'},
   ];
 
-  // ROW 3 — Deductions / locked
-  const deductCards=[
-    {l:'Liquid Funds',v:'₹ '+tliq.toFixed(2)+' Cr',s:'Bank + Sweep + BRS',cl:'mc-teal',i:'💧'},
-    {l:'Investments',v:'₹ '+tinv.toFixed(2)+' Cr',s:'FD + MF + Bonds',cl:'mc-amber',i:'💼'},
-    {l:'Reserve Fund',v:'₹ '+tres.toFixed(2)+' Cr',s:'Set aside / earmarked',cl:'mc-violet',i:'🛡'},
-    {l:'Restricted Funds',v:'₹ '+trest.toFixed(2)+' Cr',s:'Funds with restrictions',cl:'mc-red',i:'🚫'},
-    {l:'Locked Funds',v:'₹ '+tlk.toFixed(2)+' Cr',s:'Committed / non-liquid',cl:'mc-red',i:'🔒'},
-    {l:'Net Available',v:'₹ '+tav.toFixed(2)+' Cr',s:'Free to deploy',cl:'mc-green',i:'✅'},
-  ];
-
+  $('metric-row-top').innerHTML='';
   $('metric-row').innerHTML=
-    `<div class="metric-section-label">💰 Balance Breakdown</div>`+
-    `<div class="metric-row-narrow">`+
-    detailCards.map(c=>`<div class="metric-card ${c.cl}"><div class="metric-icon">${c.i}</div><div class="metric-label">${c.l}</div><div class="metric-value">${c.v}</div><div class="metric-sub">${c.s}</div></div>`).join('')+
-    `</div>`+
-    `<div class="metric-section-label">📐 Fund Composition</div>`+
-    `<div class="metric-row-narrow">`+
-    deductCards.map(c=>`<div class="metric-card ${c.cl}"><div class="metric-icon">${c.i}</div><div class="metric-label">${c.l}</div><div class="metric-value">${c.v}</div><div class="metric-sub">${c.s}</div></div>`).join('')+
+    `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">`+
+    cards.map(c=>`
+      <div class="metric-card ${c.cl}">
+        <div class="metric-icon">${c.i}</div>
+        <div class="metric-label">${c.l}</div>
+        <div class="metric-value">${c.v}</div>
+        <div class="metric-sub">${c.s}</div>
+      </div>`).join('')+
     `</div>`;
 }
 
@@ -1355,12 +1409,13 @@ function renderTable(data){
   const sortedDates=Object.keys(sheetsData).sort();
   const prevDate=sortedDates[sortedDates.indexOf(dashDate)-1]||null;
   const prevData=prevDate?sheetsData[prevDate]:{};
-  const has=ENTITIES.some(e=>data[e]&&compute(data[e]).total!==0);
+  const active=getActiveEntities();
+  const has=active.some(e=>data[e]&&compute(data[e]).total!==0);
   if(!has){$('main-tbody').innerHTML=`<tr><td colspan="20"><div class="empty-state" style="padding:28px"><div class="ei">📭</div><div class="em">No entries for ${fmtDate(dashDate)}</div></div></td></tr>`;return;}
   let tot={bank:0,sweep:0,fd:0,mf:0,bonds:0,brs:0,reserve:0,restricted:0,locked_funds:0,total:0,available:0};
   const ccTot={};CUSTOM_COLS.forEach(c=>{if(c.type==='number')ccTot[c.key]=0;});
   let rows='';
-  ENTITIES.forEach(e=>{
+  active.forEach(e=>{
     const r=data[e]||{};const c=compute(r);const prev=prevData[e]||null;
     Object.keys(tot).forEach(k=>{tot[k]+=(k==='total'?c.total:k==='available'?c.available:r[k]||0);});
     CUSTOM_COLS.forEach(cc=>{if(cc.type==='number')ccTot[cc.key]=(ccTot[cc.key]||0)+(parseFloat(r[cc.key])||0);});
