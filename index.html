@@ -324,6 +324,7 @@ th.cmp-diff{background:#fff9db;color:var(--amber)}
       <div class="tab" onclick="switchTab('compare',this)">📅 Compare</div>
       <div class="tab" onclick="switchTab('entry',this)">✏️ Enter Data</div>
       <div class="tab" onclick="switchTab('status',this)">✅ Status</div>
+      <div class="tab" onclick="switchTab('analytics',this)">🧠 Analytics</div>
       <div class="tab admin-only" onclick="switchTab('audit',this)">🔍 Audit</div>
       <div class="tab admin-only" onclick="switchTab('users',this)">👥 Users</div>
     </div>
@@ -401,6 +402,50 @@ th.cmp-diff{background:#fff9db;color:var(--amber)}
 
     <!-- ═══ ENTRY ═══ -->
     <div id="tab-entry" style="display:none">
+
+      <!-- EXCEL BULK UPLOAD -->
+      <div class="card" style="padding:20px;margin-bottom:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+          <div>
+            <div style="font-size:14px;font-weight:800">📂 Bulk Upload via Excel</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Upload .xlsx with columns: Date · Entity · Bank Balance · Sweep Deposit · Fixed Deposits · Mutual Funds · Bonds/Debentures · BRS · Reserve Fund · Restricted Fund · Locked Funds · Remarks</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()">⬇ Download Template</button>
+            <label class="btn btn-green btn-sm" style="cursor:pointer">
+              📂 Choose Excel File
+              <input type="file" accept=".xlsx,.xls" style="display:none" onchange="handleExcelUpload(event)">
+            </label>
+          </div>
+        </div>
+        <!-- Preview table -->
+        <div id="xl-preview-wrap" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+            <div>
+              <div style="font-size:12px;font-weight:800" id="xl-preview-title">Preview — 0 rows</div>
+              <div style="font-size:11px;color:var(--muted)" id="xl-preview-sub"></div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-ghost btn-sm" onclick="clearXlPreview()">✕ Clear</button>
+              <button class="btn btn-blue" id="xl-submit-btn" onclick="submitExcelBatch()">📤 Submit All to Sheet</button>
+            </div>
+          </div>
+          <div id="xl-errors" style="display:none;margin-bottom:10px"></div>
+          <div style="overflow-x:auto;max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius)">
+            <table>
+              <thead id="xl-thead" style="position:sticky;top:0;z-index:2"></thead>
+              <tbody id="xl-tbody"></tbody>
+            </table>
+          </div>
+          <div id="xl-submit-progress" style="display:none;margin-top:10px">
+            <div style="background:#f0f2f8;border-radius:20px;height:8px;overflow:hidden;margin-bottom:6px">
+              <div id="xl-progress-bar" style="height:100%;background:var(--blue);border-radius:20px;transition:width .3s;width:0%"></div>
+            </div>
+            <div style="font-size:11px;color:var(--muted)" id="xl-progress-label">Submitting 0 / 0…</div>
+          </div>
+        </div>
+        <div id="xl-empty" style="padding:20px;text-align:center;color:var(--hint);font-size:12px">Upload an Excel file to preview rows before submitting. Use the template for the correct column order.</div>
+      </div>
 
       <!-- Entity admin panel (admin only) -->
       <div class="entity-admin admin-only">
@@ -540,6 +585,150 @@ th.cmp-diff{background:#fff9db;color:var(--amber)}
         <div style="overflow-x:auto">
           <table><thead><tr><th>Time</th><th>Entity</th><th>Date</th><th>Action</th><th>By</th><th>Bank</th><th>Sweep</th><th>FD</th><th>MF</th><th>Bonds</th><th>BRS</th><th>Total</th><th>Reserve</th><th>Restricted</th><th>Locked</th><th>Available</th><th>Remarks</th></tr></thead>
           <tbody id="audit-tbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ ANALYTICS ═══ -->
+    <div id="tab-analytics" style="display:none">
+      <!-- Filter row -->
+      <div class="card" style="padding:16px 20px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="font-size:13px;font-weight:800;color:var(--text)">🧠 Dynamic Analytics Studio</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:auto">
+            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Date range</label>
+            <input type="date" class="form-input" id="an-from" style="width:140px;padding:5px 8px">
+            <span style="color:var(--hint)">to</span>
+            <input type="date" class="form-input" id="an-to" style="width:140px;padding:5px 8px">
+            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Entities</label>
+            <select class="form-input" id="an-entity" style="width:130px;padding:5px 8px"><option value="">All entities</option></select>
+            <button class="btn btn-blue btn-sm" onclick="buildAnalyticsChart()">Build Chart</button>
+            <button class="btn btn-ghost btn-sm" onclick="runAIAnalysis()">🤖 AI Analysis</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart Builder -->
+      <div style="display:grid;grid-template-columns:260px 1fr;gap:16px;margin-bottom:16px">
+        <!-- Controls panel -->
+        <div class="card" style="padding:16px">
+          <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:14px;text-transform:uppercase;letter-spacing:.4px">Chart Settings</div>
+          <div class="form-group" style="margin-bottom:12px">
+            <label class="form-label">Chart type</label>
+            <select class="form-input" id="an-chart-type">
+              <option value="bar">Bar Chart</option>
+              <option value="line">Line Chart</option>
+              <option value="area">Area Chart</option>
+              <option value="doughnut">Donut Chart</option>
+              <option value="radar">Radar Chart</option>
+              <option value="scatter">Scatter Plot</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:12px">
+            <label class="form-label">X-Axis / Group by</label>
+            <select class="form-input" id="an-xaxis">
+              <option value="entity">Entity</option>
+              <option value="date">Date</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:12px">
+            <label class="form-label">Y-Axis (metric)</label>
+            <select class="form-input" id="an-yaxis">
+              <option value="total">Total Balance</option>
+              <option value="available">Available Funds</option>
+              <option value="liquid">Liquid Funds</option>
+              <option value="investments">Investments</option>
+              <option value="bank">Bank Balance</option>
+              <option value="sweep">Sweep Deposit</option>
+              <option value="fd">Fixed Deposits</option>
+              <option value="mf">Mutual Funds</option>
+              <option value="bonds">Bonds/Debentures</option>
+              <option value="brs">BRS</option>
+              <option value="reserve">Reserve Fund</option>
+              <option value="restricted">Restricted Fund</option>
+              <option value="locked_funds">Locked Funds</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:12px">
+            <label class="form-label">Aggregation</label>
+            <select class="form-input" id="an-agg">
+              <option value="sum">Sum</option>
+              <option value="avg">Average</option>
+              <option value="max">Maximum</option>
+              <option value="min">Minimum</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:12px">
+            <label class="form-label">Color palette</label>
+            <select class="form-input" id="an-palette">
+              <option value="blue">Blue shades</option>
+              <option value="multi">Multicolour</option>
+              <option value="green">Green shades</option>
+              <option value="warm">Warm (Red/Amber)</option>
+            </select>
+          </div>
+          <button class="btn btn-blue" style="width:100%;margin-top:4px" onclick="buildAnalyticsChart()">▶ Build Chart</button>
+          <button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="saveChartPreset()">💾 Save Preset</button>
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Saved Presets</div>
+            <div id="an-presets"></div>
+          </div>
+        </div>
+
+        <!-- Chart output -->
+        <div class="card" style="padding:18px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+            <div>
+              <div style="font-size:13px;font-weight:800;color:var(--text)" id="an-chart-title">Build a chart using the controls</div>
+              <div style="font-size:11px;color:var(--hint);margin-top:2px" id="an-chart-sub"></div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="exportAnalyticsChart()">⬇ PNG</button>
+          </div>
+          <div style="position:relative;height:340px"><canvas id="analyticsChart"></canvas></div>
+          <div id="an-no-data" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--hint);pointer-events:none">
+            <div style="font-size:32px">📊</div>
+            <div style="font-size:13px;font-weight:700">Select settings and click Build Chart</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data table for selected view -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header">
+          <div class="card-title" id="an-table-title">Data table</div>
+          <button class="btn btn-ghost btn-sm" onclick="exportAnalyticsExcel()">⬇ Excel</button>
+        </div>
+        <div style="overflow-x:auto;max-height:300px;overflow-y:auto"><table><thead id="an-table-head"></thead><tbody id="an-table-body"></tbody></table></div>
+      </div>
+
+      <!-- AI Analysis panel -->
+      <div class="card" style="padding:20px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+          <div>
+            <div style="font-size:14px;font-weight:800">🤖 AI-Powered Analysis</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Ask Claude anything about your treasury data — trends, anomalies, recommendations</div>
+          </div>
+          <button class="btn btn-violet btn-sm" onclick="runAIAnalysis()">Auto-analyse current view</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <input type="text" class="form-input" id="ai-question" placeholder="e.g. Which entity has the highest liquidity risk? What's the trend for MAIA over the past week?" style="flex:1" onkeydown="if(event.key==='Enter')askAI()">
+          <button class="btn btn-blue" onclick="askAI()">Ask Claude</button>
+        </div>
+        <!-- Quick question chips -->
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px" id="ai-quick-chips"></div>
+        <!-- Response area -->
+        <div id="ai-response-wrap" style="display:none">
+          <div style="background:#f8f9fc;border:1px solid var(--border);border-radius:var(--radius);padding:16px;min-height:80px;font-size:13px;line-height:1.7;color:var(--text);white-space:pre-wrap" id="ai-response"></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn btn-ghost btn-sm" onclick="copyAIResponse()">📋 Copy</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearAIResponse()">✕ Clear</button>
+          </div>
+        </div>
+        <div id="ai-loading" style="display:none;padding:20px;text-align:center;color:var(--muted);font-size:13px">
+          <span style="animation:spin 1s linear infinite;display:inline-block;margin-right:8px">⏳</span> Claude is analysing your data…
+        </div>
+        <div id="ai-empty" style="padding:16px;text-align:center;color:var(--hint);font-size:12px">
+          Type a question or click "Auto-analyse" to get insights from Claude about your treasury data.
         </div>
       </div>
     </div>
@@ -1143,11 +1332,13 @@ function openModal(id){$(id).classList.add('open');}
 function closeModal(id){$(id).classList.remove('open');}
 function filterTable(q){document.querySelectorAll('#main-tbody tr').forEach(tr=>{const e=tr.getAttribute('data-entity')||'';tr.style.display=e.toLowerCase().includes(q.toLowerCase())?'':'none';});}
 function switchTab(tab,el){
-  ['dashboard','compare','entry','status','audit','users'].forEach(t=>{const e=$('tab-'+t);if(e)e.style.display='none';});
+  ['dashboard','compare','entry','status','audit','users','analytics'].forEach(t=>{const e=$('tab-'+t);if(e)e.style.display='none';});
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   const target=$('tab-'+tab);if(target)target.style.display='block';
   if(el)el.classList.add('active');
-  if(tab==='audit')renderAudit();if(tab==='compare')renderComparison();
+  if(tab==='audit')renderAudit();
+  if(tab==='compare')renderComparison();
+  if(tab==='analytics'){initAnalyticsTab();}
 }
 function updatePreview(){
   const v=id=>(+$(id).value)||0;
@@ -1171,7 +1362,330 @@ function exportExcel(){
   const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Balance_'+dashDate);
   XLSX.writeFile(wb,'BankBalance_'+dashDate+'.xlsx');showStatus('✓ Excel downloaded',false);
 }
-function todayStr(){return new Date().toISOString().split('T')[0];}
+// ═══════════════════════════════════════════════════════════════════════
+// ── EXCEL BULK UPLOAD ──────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+let xlRows=[];
+const XL_COLS=['date','entity','bank','sweep','fd','mf','bonds','brs','reserve','restricted','locked_funds','remarks'];
+const XL_LABELS=['Date','Entity','Bank Balance','Sweep Deposit','Fixed Deposits','Mutual Funds','Bonds/Deb','BRS','Reserve Fund','Restricted Fund','Locked Funds','Remarks'];
+
+function downloadTemplate(){
+  const ws=XLSX.utils.aoa_to_sheet([XL_LABELS,[todayStr(),'MAIA',0.18,0,13.75,5.0,2.0,0.55,1.0,0,0,'']]);
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'BalanceUpload');
+  XLSX.writeFile(wb,'BankBalance_Template.xlsx');showStatus('✓ Template downloaded',false);
+}
+
+function handleExcelUpload(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      if(raw.length<2){showStatus('Excel has no data rows.',true);return;}
+      // Map headers (case-insensitive, flexible)
+      const hdrs=raw[0].map(h=>(h||'').toString().toLowerCase().trim().replace(/[\s\/\-]+/g,'_'));
+      const colMap={};
+      XL_COLS.forEach((k,i)=>{
+        const aliases={bank:['bank','bank_balance'],sweep:['sweep','sweep_deposit','sweep_td'],fd:['fd','fixed_deposits','fixed_deposit'],mf:['mf','mutual_funds','mutual_fund'],bonds:['bonds','bonds_debentures','bonds/debentures','bond'],brs:['brs'],reserve:['reserve','reserve_fund'],restricted:['restricted','restricted_fund'],locked_funds:['locked','locked_funds','locked_fund'],date:['date'],entity:['entity'],remarks:['remarks','remark','note','notes']};
+        const opts=aliases[k]||[k];
+        const found=hdrs.findIndex(h=>opts.includes(h));
+        colMap[k]=found;
+      });
+      if(colMap.date<0||colMap.entity<0){showStatus('Excel must have "Date" and "Entity" columns.',true);return;}
+      xlRows=[];const errors=[];
+      for(let i=1;i<raw.length;i++){
+        const row=raw[i];
+        const date=String(row[colMap.date]||'').trim();
+        const entity=String(row[colMap.entity]||'').trim().toUpperCase();
+        if(!date||!entity)continue;
+        // Convert Excel date serial if needed
+        let dateStr=date;
+        if(!isNaN(date)&&date>40000){const d=new Date(Math.round((+date-25569)*864e5));dateStr=d.toISOString().split('T')[0];}
+        else if(date.includes('/')){const p=date.split('/');dateStr=p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');}
+        const r={date:dateStr,entity};
+        ['bank','sweep','fd','mf','bonds','brs','reserve','restricted','locked_funds'].forEach(k=>{r[k]=colMap[k]>=0?parseFloat(row[colMap[k]])||0:0;});
+        r.remarks=colMap.remarks>=0?String(row[colMap.remarks]||''):'';
+        xlRows.push(r);
+      }
+      if(!xlRows.length){showStatus('No valid rows found.',true);return;}
+      renderXlPreview();
+    }catch(err){showStatus('❌ Error reading Excel: '+err.message,true);}
+  };
+  reader.readAsArrayBuffer(file);
+  e.target.value='';
+}
+
+function renderXlPreview(){
+  $('xl-empty').style.display='none';
+  $('xl-preview-wrap').style.display='block';
+  $('xl-preview-title').textContent='Preview — '+xlRows.length+' rows';
+  const dupes=[],locks=[];
+  xlRows.forEach(r=>{const ex=sheetsData[r.date]&&sheetsData[r.date][r.entity];if(ex&&ex.locked&&!isAdmin)locks.push(r.entity+' ('+r.date+')');});
+  const errHtml=locks.length?`<div class="warn-box" style="margin:0">⚠️ ${locks.length} row(s) are locked and will be skipped (not admin): ${locks.join(', ')}</div>`:'';
+  $('xl-errors').innerHTML=errHtml;$('xl-errors').style.display=locks.length?'block':'none';
+  const c=compute;
+  $('xl-thead').innerHTML='<tr>'+XL_LABELS.map(l=>`<th>${l}</th>`).join('')+'<th>Total</th><th>Available</th><th>Status</th></tr>';
+  $('xl-tbody').innerHTML=xlRows.map(r=>{
+    const comp=c(r);const ex=sheetsData[r.date]&&sheetsData[r.date][r.entity];
+    const stat=ex&&ex.locked&&!isAdmin?'<span class="badge badge-red">🔒 Skip</span>':ex?'<span class="badge badge-amber">Update</span>':'<span class="badge badge-green">New</span>';
+    return`<tr><td style="text-align:left">${r.date}</td><td style="text-align:left;font-weight:700">${r.entity}</td>
+      <td>${r.bank.toFixed(2)}</td><td>${r.sweep.toFixed(2)}</td><td>${r.fd.toFixed(2)}</td>
+      <td>${r.mf.toFixed(2)}</td><td>${r.bonds.toFixed(2)}</td><td>${r.brs.toFixed(2)}</td>
+      <td>${r.reserve.toFixed(2)}</td><td>${r.restricted.toFixed(2)}</td><td>${r.locked_funds.toFixed(2)}</td>
+      <td style="text-align:left;color:var(--muted)">${r.remarks||''}</td>
+      <td>${comp.total.toFixed(2)}</td><td style="color:var(--green);font-weight:700">${comp.available.toFixed(2)}</td><td>${stat}</td></tr>`;
+  }).join('');
+  $('xl-preview-sub').textContent=xlRows.length+' rows across '+[...new Set(xlRows.map(r=>r.date))].length+' dates and '+[...new Set(xlRows.map(r=>r.entity))].length+' entities';
+}
+
+function clearXlPreview(){xlRows=[];$('xl-preview-wrap').style.display='none';$('xl-empty').style.display='block';}
+
+async function submitExcelBatch(){
+  const submittable=xlRows.filter(r=>!(sheetsData[r.date]&&sheetsData[r.date][r.entity]&&sheetsData[r.date][r.entity].locked&&!isAdmin));
+  if(!submittable.length){showStatus('No rows to submit.',true);return;}
+  const dname=currentUser.displayName||nameFromEmail(currentUser.email);
+  $('xl-submit-btn').disabled=true;
+  $('xl-submit-progress').style.display='block';
+  let done=0,failed=0;
+  for(const r of submittable){
+    const existing=sheetsData[r.date]&&sheetsData[r.date][r.entity];
+    const payload={...r,submittedBy:currentUser.email,submittedByName:dname,submittedAt:new Date().toISOString(),action:existing&&existing.locked&&isAdmin?'EDIT_ADMIN':'SUBMIT',locked:true};
+    try{
+      const resp=await fetch(APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
+      const res=await resp.json();
+      if(res.status==='ok')done++;else failed++;
+    }catch{failed++;}
+    const pct=Math.round((done+failed)/submittable.length*100);
+    $('xl-progress-bar').style.width=pct+'%';
+    $('xl-progress-label').textContent=`Submitting ${done+failed} / ${submittable.length}… (${failed} failed)`;
+  }
+  $('xl-submit-btn').disabled=false;
+  showStatus(`✓ Upload complete: ${done} submitted${failed?', '+failed+' failed':''}`,failed>0);
+  await doRefresh();
+  clearXlPreview();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ── ANALYTICS TAB ─────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+let anChart=null;
+let anPresets=JSON.parse(localStorage.getItem('bb_an_presets')||'[]');
+let anLastData=[];
+
+const AN_PALETTES={
+  blue:['#3b5bdb','#4c6ef5','#5c7cfa','#74c0fc','#a5d8ff','#bac8ff'],
+  multi:['#3b5bdb','#0ca678','#f08c00','#d6336c','#7048e8','#0c8599','#e8590c','#1098ad','#2f9e44','#c92a2a'],
+  green:['#0ca678','#12b886','#20c997','#38d9a9','#63e6be','#96f2d7'],
+  warm:['#e03131','#f03e3e','#f08c00','#fd7e14','#ffa94d','#ffec99'],
+};
+
+function initAnalyticsTab(){
+  // Populate entity select
+  const sel=$('an-entity');if(sel){sel.innerHTML='<option value="">All entities</option>';ENTITIES.forEach(e=>sel.innerHTML+=`<option value="${e}">${e}</option>`);}
+  // Set default date range (last 30 days)
+  const today=todayStr();const from=new Date(today+'T00:00:00');from.setDate(from.getDate()-30);
+  if($('an-from')&&!$('an-from').value)$('an-from').value=from.toISOString().split('T')[0];
+  if($('an-to')&&!$('an-to').value)$('an-to').value=today;
+  renderPresets();renderQuickChips();
+}
+
+function buildAnalyticsChart(){
+  const from=$('an-from').value,to=$('an-to').value;
+  const entityFilter=$('an-entity').value;
+  const chartType=$('an-chart-type').value;
+  const xaxis=$('an-xaxis').value;
+  const yaxisKey=$('an-yaxis').value;
+  const agg=$('an-agg').value;
+  const palKey=$('an-palette').value;
+  const pal=AN_PALETTES[palKey]||AN_PALETTES.multi;
+
+  // Gather data in date range
+  const dates=Object.keys(sheetsData).filter(d=>(!from||d>=from)&&(!to||d<=to)).sort();
+  const entities=entityFilter?[entityFilter]:ENTITIES;
+
+  function getVal(r,key){
+    if(!r)return 0;
+    const c=compute(r);
+    if(key==='total')return c.total;if(key==='available')return c.available;
+    if(key==='liquid')return c.liquid;if(key==='investments')return c.investments;
+    return r[key]||0;
+  }
+
+  let labels=[],datasets=[];
+  anLastData=[];
+
+  if(xaxis==='entity'){
+    // X = entities, one bar/line per entity, aggregated across dates
+    labels=entities;
+    const vals=entities.map(e=>{
+      const vs=dates.map(d=>getVal(sheetsData[d]&&sheetsData[d][e],yaxisKey)).filter(v=>v!==0);
+      if(!vs.length)return 0;
+      if(agg==='sum')return vs.reduce((a,b)=>a+b,0);
+      if(agg==='avg')return vs.reduce((a,b)=>a+b,0)/vs.length;
+      if(agg==='max')return Math.max(...vs);
+      if(agg==='min')return Math.min(...vs);
+      return 0;
+    });
+    datasets=[{label:yaxisKey,data:vals,backgroundColor:vals.map((_,i)=>pal[i%pal.length]),borderColor:vals.map((_,i)=>pal[i%pal.length]),borderWidth:2,fill:chartType==='area',tension:.4,pointRadius:4}];
+    anLastData=labels.map((l,i)=>({label:l,value:vals[i]}));
+  } else {
+    // X = dates, one line per entity
+    labels=dates;
+    datasets=entities.map((e,ei)=>{
+      const data=dates.map(d=>getVal(sheetsData[d]&&sheetsData[d][e],yaxisKey));
+      const color=pal[ei%pal.length];
+      return{label:e,data,borderColor:color,backgroundColor:color+'44',fill:chartType==='area',tension:.4,pointRadius:3,borderWidth:2};
+    }).filter(ds=>ds.data.some(v=>v>0));
+    anLastData=dates.map((d,i)=>{const row={date:d};datasets.forEach(ds=>row[ds.label]=ds.data[i]||0);return row;});
+  }
+
+  const yLabel=$('an-yaxis').options[$('an-yaxis').selectedIndex].text;
+  const aggLabel=$('an-agg').options[$('an-agg').selectedIndex].text;
+  $('an-chart-title').textContent=`${aggLabel} ${yLabel} by ${xaxis==='entity'?'Entity':'Date'}`;
+  $('an-chart-sub').textContent=`${from||'all'} → ${to||'today'} · ${entityFilter||'all entities'} · ${dates.length} date(s)`;
+
+  if(anChart)anChart.destroy();
+  $('an-no-data').style.display='none';
+
+  const ctype=chartType==='area'?'line':chartType;
+  anChart=new Chart($('analyticsChart'),{
+    type:ctype==='scatter'?'scatter':ctype,
+    data:{labels,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:xaxis==='date'||chartType==='doughnut'||chartType==='radar',position:'bottom',labels:{font:{size:10},boxWidth:10}}},
+      scales:(ctype==='doughnut'||ctype==='radar')?{}:{
+        x:{grid:{display:false},ticks:{font:{size:9},maxRotation:45}},
+        y:{grid:{color:'#f0f2f8'},ticks:{font:{size:9}},title:{display:true,text:'₹ Crores',font:{size:9}}}
+      }
+    }
+  });
+
+  // Render data table
+  renderAnalyticsTable();
+}
+
+function renderAnalyticsTable(){
+  if(!anLastData.length){$('an-table-head').innerHTML='';$('an-table-body').innerHTML='';return;}
+  const keys=Object.keys(anLastData[0]);
+  $('an-table-head').innerHTML='<tr>'+keys.map(k=>`<th>${k}</th>`).join('')+'</tr>';
+  $('an-table-body').innerHTML=anLastData.map(row=>'<tr>'+keys.map(k=>`<td style="text-align:${typeof row[k]==='number'?'right':'left'}">${typeof row[k]==='number'?row[k].toFixed(2):row[k]}</td>`).join('')+'</tr>').join('');
+  $('an-table-title').textContent='Data table ('+anLastData.length+' rows)';
+}
+
+function exportAnalyticsChart(){
+  if(!anChart){showStatus('Build a chart first.',true);return;}
+  const a=document.createElement('a');a.href=anChart.toBase64Image();a.download='analytics_chart.png';a.click();
+}
+
+function exportAnalyticsExcel(){
+  if(!anLastData.length){showStatus('No data to export.',true);return;}
+  const keys=Object.keys(anLastData[0]);
+  const rows=[keys,...anLastData.map(r=>keys.map(k=>r[k]))];
+  const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Analytics');
+  XLSX.writeFile(wb,'analytics_export.xlsx');showStatus('✓ Excel exported',false);
+}
+
+// ── CHART PRESETS ─────────────────────────────────────────────────────
+function saveChartPreset(){
+  const name=prompt('Preset name:','');if(!name)return;
+  const preset={name,chartType:$('an-chart-type').value,xaxis:$('an-xaxis').value,yaxis:$('an-yaxis').value,agg:$('an-agg').value,palette:$('an-palette').value,from:$('an-from').value,to:$('an-to').value,entity:$('an-entity').value};
+  anPresets=anPresets.filter(p=>p.name!==name);anPresets.push(preset);
+  localStorage.setItem('bb_an_presets',JSON.stringify(anPresets));renderPresets();showStatus('✓ Preset "'+name+'" saved.',false);
+}
+function loadPreset(name){
+  const p=anPresets.find(x=>x.name===name);if(!p)return;
+  $('an-chart-type').value=p.chartType;$('an-xaxis').value=p.xaxis;$('an-yaxis').value=p.yaxis;
+  $('an-agg').value=p.agg;$('an-palette').value=p.palette;
+  if(p.from)$('an-from').value=p.from;if(p.to)$('an-to').value=p.to;if(p.entity)$('an-entity').value=p.entity;
+  buildAnalyticsChart();
+}
+function deletePreset(name){anPresets=anPresets.filter(p=>p.name!==name);localStorage.setItem('bb_an_presets',JSON.stringify(anPresets));renderPresets();}
+function renderPresets(){
+  const w=$('an-presets');if(!w)return;
+  w.innerHTML=anPresets.length?anPresets.map(p=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><button onclick="loadPreset('${p.name}')" style="background:none;border:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--blue);text-align:left">📌 ${p.name}</button><button onclick="deletePreset('${p.name}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px">×</button></div>`).join(''):'<div style="font-size:11px;color:var(--hint)">No presets saved</div>';
+}
+
+// ── AI QUICK CHIPS ─────────────────────────────────────────────────────
+const AI_QUICK=[
+  'Which entity has highest available funds today?',
+  'What is the total liquidity trend over the last week?',
+  'Which entities are below ₹1 Cr in available funds?',
+  'Compare liquid vs investment breakdown across entities',
+  'Flag any entities with zero bank balance',
+  'What percentage of total funds is in fixed deposits?',
+  'Identify top 3 entities by reserve fund',
+  'Summarise key observations from today\'s data',
+];
+function renderQuickChips(){
+  const w=$('ai-quick-chips');if(!w)return;
+  w.innerHTML=AI_QUICK.map(q=>`<button onclick="setAIQuestion('${q.replace(/'/g,"\\'")}')" style="padding:4px 10px;border:1px solid var(--border);border-radius:20px;background:#f8f9fc;font-size:11px;font-weight:600;cursor:pointer;color:var(--muted);transition:all .15s" onmouseover="this.style.background=getComputedStyle(document.documentElement).getPropertyValue('--blue-lt');this.style.color=getComputedStyle(document.documentElement).getPropertyValue('--blue')" onmouseout="this.style.background='#f8f9fc';this.style.color=getComputedStyle(document.documentElement).getPropertyValue('--muted')">${q}</button>`).join('');
+}
+function setAIQuestion(q){$('ai-question').value=q;askAI();}
+
+// ── AI ANALYSIS ────────────────────────────────────────────────────────
+async function askAI(){
+  const question=$('ai-question').value.trim();
+  if(!question){showStatus('Enter a question.',true);return;}
+  showAILoading(true);
+  // Build context from current sheetsData
+  const ctx=buildDataContext();
+  const prompt=`You are a treasury analyst assistant. Here is the current bank balance data for all entities (₹ Crores):\n\n${ctx}\n\nUser question: ${question}\n\nProvide a concise, specific, data-driven answer. Use numbers from the data. Be direct and actionable.`;
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:prompt}]})
+    });
+    const data=await resp.json();
+    const text=data.content&&data.content[0]&&data.content[0].text;
+    if(!text)throw new Error(data.error&&data.error.message||'No response');
+    showAIResponse(text);
+  }catch(e){showAIResponse('❌ Error: '+e.message);}
+  finally{showAILoading(false);}
+}
+
+async function runAIAnalysis(){
+  $('ai-question').value='Give me a comprehensive analysis of the current treasury position: highlight top entities by available funds, flag any concerns, identify concentration risks, and provide 3 key recommendations.';
+  await askAI();
+}
+
+function buildDataContext(){
+  const today=todayStr();const data=sheetsData[dashDate]||sheetsData[today]||{};
+  const lines=['Date: '+dashDate,'','ENTITY DATA:'];
+  ENTITIES.forEach(e=>{
+    const r=data[e];if(!r||compute(r).total===0)return;
+    const c=compute(r);
+    lines.push(`${e}: Total=₹${c.total.toFixed(2)}Cr, Available=₹${c.available.toFixed(2)}Cr, Liquid=₹${c.liquid.toFixed(2)}Cr, Investments=₹${c.investments.toFixed(2)}Cr, Reserve=₹${(r.reserve||0).toFixed(2)}Cr, Restricted=₹${(r.restricted||0).toFixed(2)}Cr, Locked=₹${(r.locked_funds||0).toFixed(2)}Cr`);
+  });
+  // Add multi-date summary if available
+  const sortedDates=Object.keys(sheetsData).sort().slice(-7);
+  if(sortedDates.length>1){
+    lines.push('','RECENT TREND (last 7 dates, total across all entities):');
+    sortedDates.forEach(d=>{
+      const tot=ENTITIES.reduce((a,e)=>{const r=sheetsData[d]&&sheetsData[d][e];return a+(r?compute(r).total:0);},0);
+      lines.push(`${d}: ₹${tot.toFixed(2)}Cr total`);
+    });
+  }
+  return lines.join('\n');
+}
+
+function showAILoading(on){
+  $('ai-loading').style.display=on?'block':'none';
+  $('ai-response-wrap').style.display='none';
+  $('ai-empty').style.display='none';
+}
+function showAIResponse(text){
+  $('ai-response').textContent=text;
+  $('ai-response-wrap').style.display='block';
+  $('ai-loading').style.display='none';
+  $('ai-empty').style.display='none';
+}
+function clearAIResponse(){$('ai-response-wrap').style.display='none';$('ai-empty').style.display='block';}
+function copyAIResponse(){navigator.clipboard.writeText($('ai-response').textContent);showStatus('✓ Copied to clipboard',false);}
+
 function fmtDate(d){try{return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}catch{return d;}}
 function fmtTime(d){return d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});}
 function fmtTime2(iso){try{const d=new Date(iso);return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});}catch{return iso;}}
