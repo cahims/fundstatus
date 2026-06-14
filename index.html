@@ -96,6 +96,9 @@ select.isel{padding:4px 8px;border:1px solid var(--border);border-radius:6px;fon
 
 /* ── METRICS ── */
 .metric-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px}
+.metric-row-wide{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:6px}
+.metric-row-narrow{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px}
+.metric-section-label{font-size:10px;font-weight:800;color:var(--hint);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;margin-top:14px;padding-left:2px}
 .metric-card{background:#fff;border-radius:12px;padding:14px 14px 12px;border:1px solid var(--border);position:relative;overflow:hidden}
 .metric-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:12px 12px 0 0}
 .mc-blue::before{background:var(--blue)}.mc-green::before{background:var(--green)}
@@ -221,8 +224,8 @@ th.cmp-diff{background:#fff9db;color:var(--amber)}
 /* ── DELETE DATE PANEL ── */
 .delete-date-panel{background:var(--red-lt);border:1px solid var(--red-bd);border-radius:12px;padding:18px;margin-bottom:18px}
 
-@media(max-width:1100px){.metric-row{grid-template-columns:repeat(3,1fr)}.chart-grid-4{grid-template-columns:1fr}.entry-grid{grid-template-columns:repeat(3,1fr)}.sub-grid{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:700px){.metric-row{grid-template-columns:repeat(2,1fr)}.entry-grid{grid-template-columns:repeat(2,1fr)}.sub-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:1100px){.metric-row{grid-template-columns:repeat(3,1fr)}.metric-row-wide{grid-template-columns:repeat(2,1fr)}.metric-row-narrow{grid-template-columns:repeat(3,1fr)}.chart-grid-4{grid-template-columns:1fr}.entry-grid{grid-template-columns:repeat(3,1fr)}.sub-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:700px){.metric-row{grid-template-columns:repeat(2,1fr)}.metric-row-wide{grid-template-columns:repeat(2,1fr)}.metric-row-narrow{grid-template-columns:repeat(2,1fr)}.entry-grid{grid-template-columns:repeat(2,1fr)}.sub-grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -341,7 +344,8 @@ th.cmp-diff{background:#fff9db;color:var(--amber)}
         <span style="margin-left:auto;font-size:11px;color:var(--hint)" id="data-src-label"></span>
       </div>
 
-      <div class="metric-row" id="metric-row"></div>
+      <div id="metric-row-top"></div>
+      <div id="metric-row"></div>
 
       <div class="chart-grid-4">
         <div class="chart-card">
@@ -910,7 +914,29 @@ function parseSheetCSV(csv){
   const lines=csv.trim().split('\n').filter(l=>l.trim());
   if(lines.length<2){sheetsData={};auditLog=[];return;}
   const hdr=lines[0].split(',').map(h=>h.replace(/"/g,'').trim().toLowerCase());
-  const idx=k=>hdr.indexOf(k);
+  // Flexible column index resolver — tries multiple aliases
+  const aliases={
+    bank:['bank','bank_balance','bank balance'],
+    sweep:['sweep','sweep_deposit','sweep deposit'],
+    fd:['fd','fixed_deposit','fixed deposit','fixed deposits','fixed_deposits'],
+    mf:['mf','mutual_fund','mutual_funds','mutual fund','mutual funds'],
+    bonds:['bonds','bond','bonds_debentures','bonds/deb','debentures','bonds_deb'],
+    brs:['brs','brs_balance','bank_reconciliation'],
+    reserve:['reserve','reserve_fund','reserve fund'],
+    restricted:['restricted','restricted_funds','restricted funds'],
+    locked_funds:['locked_funds','locked funds','locked','locked fund'],
+    submitted_by:['submitted_by','submittedby','submitted by'],
+    submitted_by_name:['submitted_by_name','submittedbyname','submitted by name','name'],
+    submitted_at:['submitted_at','submittedat','submitted at','timestamp'],
+    locked:['locked','is_locked'],
+    remarks:['remarks','notes','comment','comments'],
+    audit_action:['audit_action','action'],
+  };
+  const idx=k=>{
+    const list=aliases[k]||[k];
+    for(const a of list){const i=hdr.indexOf(a);if(i>=0)return i;}
+    return -1;
+  };
   sheetsData={};auditLog=[];
   for(let i=1;i<lines.length;i++){
     const cols=splitCSV(lines[i]);if(cols.length<5)continue;
@@ -1133,19 +1159,62 @@ function renderAll(){
 // ── METRICS ────────────────────────────────────────────────────────────
 function renderMetrics(data){
   const has=ENTITIES.some(e=>data[e]&&compute(data[e]).total!==0);
-  if(!has){$('metric-row').innerHTML=`<div style="grid-column:span 6" class="empty-state"><div class="ei">📭</div><div class="em">No data for ${fmtDate(dashDate)}</div><div class="es">Select a different date or submit balance entries</div></div>`;return;}
-  let tt=0,tav=0,tinv=0,tliq=0,tres=0,tlk=0;
-  ENTITIES.forEach(e=>{const r=data[e]||{};const c=compute(r);tt+=c.total;tav+=c.available;tinv+=c.investments;tliq+=c.liquid;tres+=(r.reserve||0);tlk+=(r.locked_funds||0);});
+  const emptyHtml=`<div style="grid-column:span 6" class="empty-state"><div class="ei">📭</div><div class="em">No data for ${fmtDate(dashDate)}</div><div class="es">Select a different date or submit balance entries</div></div>`;
+  if(!has){$('metric-row-top').innerHTML='';$('metric-row').innerHTML=emptyHtml;return;}
+
+  // Aggregate all fields
+  let tBank=0,tSweep=0,tFD=0,tMF=0,tBonds=0,tBRS=0;
+  let tt=0,tav=0,tinv=0,tliq=0,tres=0,trest=0,tlk=0;
+  ENTITIES.forEach(e=>{
+    const r=data[e]||{};const c=compute(r);
+    tBank+=(r.bank||0);tSweep+=(r.sweep||0);tFD+=(r.fd||0);
+    tMF+=(r.mf||0);tBonds+=(r.bonds||0);tBRS+=(r.brs||0);
+    tt+=c.total;tav+=c.available;tinv+=c.investments;tliq+=c.liquid;
+    tres+=(r.reserve||0);trest+=(r.restricted||0);tlk+=(r.locked_funds||0);
+  });
   const sub=ENTITIES.filter(e=>data[e]&&compute(data[e]).total!==0).length;
-  const cards=[
-    {l:'Total Balance',v:'₹ '+tt.toFixed(2)+' Cr',s:'All entities',cl:'mc-blue',i:'🏦'},
+
+  // ROW 1 — Summary KPIs (3 wide cards)
+  const topCards=[
+    {l:'Total Balance',v:'₹ '+tt.toFixed(2)+' Cr',s:'All entities combined',cl:'mc-blue',i:'🏦'},
     {l:'Available Funds',v:'₹ '+tav.toFixed(2)+' Cr',s:'Total − Reserve − Restricted − Locked',cl:'mc-green',i:'✅'},
-    {l:'Liquid Funds',v:'₹ '+tliq.toFixed(2)+' Cr',s:'Bank + Sweep + BRS',cl:'mc-teal',i:'💧'},
-    {l:'Investments',v:'₹ '+tinv.toFixed(2)+' Cr',s:'FD + MF + Bonds',cl:'mc-amber',i:'📈'},
-    {l:'Reserve Fund',v:'₹ '+tres.toFixed(2)+' Cr',s:'Set aside',cl:'mc-violet',i:'🛡'},
-    {l:'Entities',v:sub+' / '+ENTITIES.length,s:'submitted today',cl:'mc-red',i:'🏢'},
+    {l:'Entities',v:sub+' / '+ENTITIES.length,s:'submitted for this date',cl:'mc-red',i:'🏢'},
   ];
-  $('metric-row').innerHTML=cards.map(c=>`<div class="metric-card ${c.cl}"><div class="metric-icon">${c.i}</div><div class="metric-label">${c.l}</div><div class="metric-value">${c.v}</div><div class="metric-sub">${c.s}</div></div>`).join('');
+  $('metric-row-top').innerHTML=
+    `<div class="metric-section-label">📊 Summary</div>`+
+    `<div class="metric-row-wide">`+
+    topCards.map(c=>`<div class="metric-card ${c.cl}"><div class="metric-icon">${c.i}</div><div class="metric-label">${c.l}</div><div class="metric-value">${c.v}</div><div class="metric-sub">${c.s}</div></div>`).join('')+
+    `</div>`;
+
+  // ROW 2 — 6 detailed breakdown cards
+  const detailCards=[
+    {l:'Bank Balance',v:'₹ '+tBank.toFixed(2)+' Cr',s:'Current account balances',cl:'mc-blue',i:'🏛'},
+    {l:'Sweep Deposit',v:'₹ '+tSweep.toFixed(2)+' Cr',s:'Overnight sweep accounts',cl:'mc-teal',i:'🔄'},
+    {l:'Fixed Deposits',v:'₹ '+tFD.toFixed(2)+' Cr',s:'FD investments',cl:'mc-amber',i:'📋'},
+    {l:'Mutual Funds',v:'₹ '+tMF.toFixed(2)+' Cr',s:'MF investments',cl:'mc-violet',i:'📈'},
+    {l:'Bonds / Deb',v:'₹ '+tBonds.toFixed(2)+' Cr',s:'Bond & debenture holdings',cl:'mc-green',i:'📜'},
+    {l:'BRS Balance',v:'₹ '+tBRS.toFixed(2)+' Cr',s:'Bank reconciliation statement',cl:'mc-teal',i:'⚖️'},
+  ];
+
+  // ROW 3 — Deductions / locked
+  const deductCards=[
+    {l:'Liquid Funds',v:'₹ '+tliq.toFixed(2)+' Cr',s:'Bank + Sweep + BRS',cl:'mc-teal',i:'💧'},
+    {l:'Investments',v:'₹ '+tinv.toFixed(2)+' Cr',s:'FD + MF + Bonds',cl:'mc-amber',i:'💼'},
+    {l:'Reserve Fund',v:'₹ '+tres.toFixed(2)+' Cr',s:'Set aside / earmarked',cl:'mc-violet',i:'🛡'},
+    {l:'Restricted Funds',v:'₹ '+trest.toFixed(2)+' Cr',s:'Funds with restrictions',cl:'mc-red',i:'🚫'},
+    {l:'Locked Funds',v:'₹ '+tlk.toFixed(2)+' Cr',s:'Committed / non-liquid',cl:'mc-red',i:'🔒'},
+    {l:'Net Available',v:'₹ '+tav.toFixed(2)+' Cr',s:'Free to deploy',cl:'mc-green',i:'✅'},
+  ];
+
+  $('metric-row').innerHTML=
+    `<div class="metric-section-label">💰 Balance Breakdown</div>`+
+    `<div class="metric-row-narrow">`+
+    detailCards.map(c=>`<div class="metric-card ${c.cl}"><div class="metric-icon">${c.i}</div><div class="metric-label">${c.l}</div><div class="metric-value">${c.v}</div><div class="metric-sub">${c.s}</div></div>`).join('')+
+    `</div>`+
+    `<div class="metric-section-label">📐 Fund Composition</div>`+
+    `<div class="metric-row-narrow">`+
+    deductCards.map(c=>`<div class="metric-card ${c.cl}"><div class="metric-icon">${c.i}</div><div class="metric-label">${c.l}</div><div class="metric-value">${c.v}</div><div class="metric-sub">${c.s}</div></div>`).join('')+
+    `</div>`;
 }
 
 // ── TABLE ──────────────────────────────────────────────────────────────
