@@ -277,6 +277,7 @@ th.cmp-diff{background:#fff9db;color:var(--amber)}
       </div>
       <button class="btn btn-ghost btn-sm" onclick="doRefresh()">🔄 Refresh</button>
       <button class="btn btn-ghost btn-sm" onclick="exportExcel()">⬇ Excel</button>
+      <button class="btn btn-ghost btn-sm" onclick="showCSVDebug()" title="Debug CSV column mapping">🔍 Debug</button>
       <button class="btn btn-red btn-sm" onclick="doLogout()">Sign out</button>
     </div>
   </div>
@@ -947,33 +948,47 @@ async function doRefresh(){
 function parseSheetCSV(csv){
   const lines=csv.trim().split('\n').filter(l=>l.trim());
   if(lines.length<2){sheetsData={};auditLog=[];return;}
-  const hdr=lines[0].split(',').map(h=>h.replace(/"/g,'').trim().toLowerCase());
+  const rawHdr=lines[0].split(',').map(h=>h.replace(/"/g,'').trim());
+  const hdr=rawHdr.map(h=>h.toLowerCase());
+
+  // ── Store raw headers for debug panel ──
+  window._csvRawHeaders=rawHdr;
+  window._csvRowCount=lines.length-1;
+
   // Flexible column index resolver — tries multiple aliases
   const aliases={
-    bank:['bank','bank_balance','bank balance'],
-    sweep:['sweep','sweep_deposit','sweep deposit'],
-    fd:['fd','fixed_deposit','fixed deposit','fixed deposits','fixed_deposits'],
-    mf:['mf','mutual_fund','mutual_funds','mutual fund','mutual funds'],
-    bonds:['bonds','bond','bonds_debentures','bonds/deb','debentures','bonds_deb'],
-    brs:['brs','brs_balance','bank_reconciliation'],
-    reserve:['reserve','reserve_fund','reserve fund'],
-    restricted:['restricted','restricted_funds','restricted funds'],
-    locked_funds:['locked_funds','locked funds','locked','locked fund'],
-    submitted_by:['submitted_by','submittedby','submitted by'],
-    submitted_by_name:['submitted_by_name','submittedbyname','submitted by name','name'],
-    submitted_at:['submitted_at','submittedat','submitted at','timestamp'],
+    bank:['bank','bank_balance','bank balance','bank bal'],
+    sweep:['sweep','sweep_deposit','sweep deposit','sweep td','sweep_td'],
+    fd:['fd','fixed_deposit','fixed deposit','fixed deposits','fixed_deposits','f.d.','f.d'],
+    mf:['mf','mutual_fund','mutual_funds','mutual fund','mutual funds','m.f.','m.f'],
+    bonds:['bonds','bond','bonds_debentures','bonds/deb','debentures','bonds_deb','bond/deb','bonds debentures'],
+    brs:['brs','brs_balance','bank_reconciliation','brs balance'],
+    reserve:['reserve','reserve_fund','reserve fund','rsv'],
+    restricted:['restricted','restricted_funds','restricted funds','restricted fund'],
+    locked_funds:['locked_funds','locked funds','locked fund','locked','lock'],
+    submitted_by:['submitted_by','submittedby','submitted by','email'],
+    submitted_by_name:['submitted_by_name','submittedbyname','submitted by name','name','user'],
+    submitted_at:['submitted_at','submittedat','submitted at','timestamp','time'],
     locked:['locked','is_locked'],
-    remarks:['remarks','notes','comment','comments'],
-    audit_action:['audit_action','action'],
+    remarks:['remarks','notes','comment','comments','remark'],
+    audit_action:['audit_action','action','audit action'],
+    date:['date','dt'],
+    entity:['entity','company','co','org'],
   };
   const idx=k=>{
     const list=aliases[k]||[k];
     for(const a of list){const i=hdr.indexOf(a);if(i>=0)return i;}
     return -1;
   };
+
+  // ── Store column mapping for debug panel ──
+  window._csvColMap={};
+  ['date','entity','bank','sweep','fd','mf','bonds','brs','reserve','restricted','locked_funds','submitted_by','submitted_by_name','submitted_at','locked','remarks','audit_action']
+    .forEach(k=>{const i=idx(k);window._csvColMap[k]={col:i,header:i>=0?rawHdr[i]:'NOT FOUND'};});
+
   sheetsData={};auditLog=[];
   for(let i=1;i<lines.length;i++){
-    const cols=splitCSV(lines[i]);if(cols.length<5)continue;
+    const cols=splitCSV(lines[i]);if(cols.length<2)continue;
     const date=cl(cols,idx,'date'),entity=cl(cols,idx,'entity').toUpperCase();
     if(!date||!entity)continue;
     const row={
@@ -994,6 +1009,59 @@ function parseSheetCSV(csv){
     auditLog.push({date,entity,...row});
   }
   auditLog.sort((a,b)=>b.submittedAt.localeCompare(a.submittedAt));
+}
+
+// ── CSV DEBUG PANEL ────────────────────────────────────────────────────
+function showCSVDebug(){
+  const hdr=window._csvRawHeaders||[];
+  const map=window._csvColMap||{};
+  const rows=window._csvRowCount||0;
+  const fields=['date','entity','bank','sweep','fd','mf','bonds','brs','reserve','restricted','locked_funds','submitted_by','submitted_by_name','submitted_at','locked','remarks','audit_action'];
+  const tableRows=fields.map(f=>{
+    const m=map[f]||{col:-1,header:'NOT FOUND'};
+    const ok=m.col>=0;
+    return`<tr style="background:${ok?'#f0fdf4':'#fff5f5'}">
+      <td style="font-weight:700;color:${ok?'var(--green)':'var(--red)'}">${ok?'✅':'❌'}</td>
+      <td style="font-weight:700">${f}</td>
+      <td style="color:var(--muted)">${m.header}</td>
+      <td style="color:var(--hint)">${m.col>=0?'col '+m.col:'—'}</td>
+    </tr>`;
+  }).join('');
+  const allHdrHtml=hdr.map((h,i)=>`<span style="display:inline-block;background:#f0f2f8;border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:11px;margin:2px"><strong>${i}</strong>: ${h}</span>`).join('');
+
+  // Show first data row values
+  const data=sheetsData[dashDate]||sheetsData[Object.keys(sheetsData)[0]]||{};
+  const firstEntity=Object.keys(data)[0];
+  const sample=firstEntity?data[firstEntity]:null;
+  const sampleHtml=sample?fields.slice(0,9).map(f=>{
+    const v=sample[f]||sample[f.replace(/_([a-z])/g,(_,c)=>c.toUpperCase())]||0;
+    return`<tr><td style="font-weight:700">${f}</td><td>${v}</td></tr>`;
+  }).join(''):'<tr><td colspan="2" style="color:var(--hint)">No data for current date</td></tr>';
+
+  const w=document.createElement('div');
+  w.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center';
+  w.innerHTML=`<div style="background:#fff;border-radius:14px;padding:24px;width:700px;max-width:96vw;max-height:90vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,.3)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-size:15px;font-weight:900">🔍 CSV Debug — Column Mapping</div>
+      <button onclick="this.closest('div[style*=fixed]').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted)">×</button>
+    </div>
+    <div style="background:#f8f9fc;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px">
+      <strong>${rows}</strong> data rows · <strong>${hdr.length}</strong> columns in sheet
+    </div>
+    <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Raw sheet headers</div>
+    <div style="margin-bottom:16px;line-height:2">${allHdrHtml||'<span style="color:var(--hint)">No headers loaded yet</span>'}</div>
+    <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Column mapping</div>
+    <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:16px">
+      <thead><tr style="background:#f8f9fc"><th style="padding:6px 8px;text-align:left">Status</th><th style="padding:6px 8px;text-align:left">Expected key</th><th style="padding:6px 8px;text-align:left">Matched header</th><th style="padding:6px 8px;text-align:left">Position</th></tr></thead>
+      <tbody>${tableRows}</tbody>
+    </table>
+    ${firstEntity?`<div style="margin-bottom:6px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Sample parsed values — ${firstEntity}</div>
+    <table style="width:100%;font-size:12px;border-collapse:collapse">
+      <thead><tr style="background:#f8f9fc"><th style="padding:6px 8px;text-align:left">Field</th><th style="padding:6px 8px;text-align:left">Value</th></tr></thead>
+      <tbody>${sampleHtml}</tbody>
+    </table>`:''}
+  </div>`;
+  document.body.appendChild(w);
 }
 function cl(cols,idx,k){return((cols[idx(k)]||'').replace(/"/g,'')).trim();}
 function n(cols,idx,k){return parseFloat(cl(cols,idx,k))||0;}
