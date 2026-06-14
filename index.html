@@ -1602,7 +1602,7 @@ function handleExcelUpload(e){
       const hdrs=raw[0].map(h=>(h||'').toString().toLowerCase().trim().replace(/[\s\/\-]+/g,'_'));
       const colMap={};
       XL_COLS.forEach((k,i)=>{
-        const aliases={bank:['bank','bank_balance'],sweep:['sweep','sweep_deposit','sweep_td'],fd:['fd','fixed_deposits','fixed_deposit'],mf:['mf','mutual_funds','mutual_fund'],bonds:['bonds','bonds_debentures','bonds/debentures','bond'],brs:['brs'],reserve:['reserve','reserve_fund'],restricted:['restricted','restricted_fund'],locked_funds:['locked','locked_funds','locked_fund'],date:['date'],entity:['entity'],remarks:['remarks','remark','note','notes']};
+        const aliases={bank:['bank','bank_balance'],sweep:['sweep','sweep_deposit','sweep_td'],fd:['fd','fixed_deposits','fixed_deposit'],mf:['mf','mutual_funds','mutual_fund'],bonds:['bonds','bonds_deb','bonds_debentures','bonds_debentures','bond'],brs:['brs'],reserve:['reserve','reserve_fund'],restricted:['restricted','restricted_fund'],locked_funds:['locked','locked_funds','locked_fund'],date:['date'],entity:['entity'],remarks:['remarks','remark','note','notes']};
         const opts=aliases[k]||[k];
         const found=hdrs.findIndex(h=>opts.includes(h));
         colMap[k]=found;
