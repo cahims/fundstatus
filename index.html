@@ -404,19 +404,81 @@ th.cmp-diff{background:#fff9db;color:var(--amber)}
 
     <!-- ═══ COMPARE ═══ -->
     <div id="tab-compare" style="display:none">
-      <div class="filter-bar">
-        <label>Date 1</label><input type="date" id="cmp-date1" onchange="renderComparison()">
-        <span style="color:var(--hint);font-weight:700">vs</span>
-        <label>Date 2</label><input type="date" id="cmp-date2" onchange="renderComparison()">
-        <button class="btn btn-blue btn-sm" onclick="renderComparison()">Compare</button>
+      <!-- Filter bar -->
+      <div class="filter-bar" style="flex-wrap:wrap;gap:10px;align-items:flex-end">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Date 1</label>
+          <input type="date" id="cmp-date1" class="form-input" style="width:160px" onchange="renderComparison()">
+        </div>
+        <div style="font-size:18px;color:var(--hint);font-weight:700;padding-top:18px">vs</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Date 2</label>
+          <input type="date" id="cmp-date2" class="form-input" style="width:160px" onchange="renderComparison()">
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Entities</label>
+          <div style="position:relative">
+            <button class="btn btn-ghost btn-sm" onclick="toggleCmpEntityFilter()" id="cmp-entity-btn" style="height:36px">
+              🏢 <span id="cmp-entity-label">All Entities</span> ▾
+            </button>
+            <div id="cmp-entity-dropdown" style="display:none;position:absolute;left:0;top:calc(100% + 4px);background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.12);z-index:200;min-width:200px;padding:10px">
+              <div style="display:flex;gap:6px;margin-bottom:8px">
+                <button class="btn btn-blue btn-sm" style="flex:1;font-size:11px" onclick="cmpSelectAll()">All</button>
+                <button class="btn btn-ghost btn-sm" style="flex:1;font-size:11px" onclick="cmpClearAll()">None</button>
+              </div>
+              <div id="cmp-entity-list" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:3px"></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Compare By</label>
+          <select class="form-input" id="cmp-metric" style="width:170px" onchange="renderComparison()">
+            <option value="total">Total Balance</option>
+            <option value="available">Available Funds</option>
+            <option value="immediate">Immediate Use (Bank+Sweep)</option>
+            <option value="investments">Investments (MF+FD+Bonds)</option>
+            <option value="locked">Locked / Reserved</option>
+            <option value="bank">Bank Balance</option>
+            <option value="sweep">Sweep Deposit</option>
+            <option value="fd">Fixed Deposits</option>
+            <option value="mf">Mutual Funds</option>
+            <option value="bonds">Bonds/Deb</option>
+            <option value="brs">BRS</option>
+          </select>
+        </div>
+
+        <button class="btn btn-blue btn-sm" onclick="renderComparison()" style="height:36px;margin-top:18px">🔄 Compare</button>
       </div>
+
+      <!-- Summary delta cards -->
+      <div id="cmp-delta-cards" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px"></div>
+
+      <!-- Chart -->
       <div class="chart-card" style="margin-bottom:18px">
-        <div class="chart-header"><div><div class="chart-title" id="cmp-chart-title">Total fund comparison</div><div class="chart-sub" id="cmp-subtitle"></div></div></div>
-        <div style="position:relative;height:240px"><canvas id="cmpChart"></canvas></div>
+        <div class="chart-header">
+          <div>
+            <div class="chart-title" id="cmp-chart-title">Comparison</div>
+            <div class="chart-sub" id="cmp-subtitle"></div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost btn-sm" onclick="setCmpChartType('bar')" id="cmp-btn-bar">Bar</button>
+            <button class="btn btn-ghost btn-sm" onclick="setCmpChartType('line')" id="cmp-btn-line">Line</button>
+          </div>
+        </div>
+        <div style="position:relative;height:260px"><canvas id="cmpChart"></canvas></div>
       </div>
+
+      <!-- Detailed table -->
       <div class="card">
-        <div class="card-header"><div class="card-title">Entity-wise comparison</div></div>
-        <div style="overflow-x:auto"><table><thead id="cmp-thead"></thead><tbody id="cmp-tbody"></tbody></table></div>
+        <div class="card-header">
+          <div class="card-title">Entity-wise Comparison</div>
+          <div class="card-sub" id="cmp-table-sub"></div>
+        </div>
+        <div style="overflow-x:auto">
+          <table><thead id="cmp-thead"></thead><tbody id="cmp-tbody"></tbody></table>
+        </div>
       </div>
     </div>
 
@@ -1499,24 +1561,149 @@ function renderDeltaAlert(data){
 }
 
 // ── COMPARISON TAB ────────────────────────────────────────────────────
-function renderComparison(){
-  const d1=$('cmp-date1').value,d2=$('cmp-date2').value;if(!d1||!d2)return;
-  const da=sheetsData[d1]||{},db=sheetsData[d2]||{};
-  $('cmp-subtitle').textContent=fmtDate(d1)+' vs '+fmtDate(d2);
-  $('cmp-chart-title').textContent='Total comparison · ₹ Cr · '+fmtDate(d1)+' vs '+fmtDate(d2);
-  const labels=ENTITIES.filter(e=>compute(da[e]||{}).total>0||compute(db[e]||{}).total>0);
-  const v1=labels.map(e=>compute(da[e]||{}).total),v2=labels.map(e=>compute(db[e]||{}).total);
-  if(cmpChart2)cmpChart2.destroy();
-  cmpChart2=new Chart($('cmpChart'),{type:'bar',data:{labels,datasets:[{label:fmtDate(d1),data:v1,backgroundColor:'#5c7cfa',borderRadius:4},{label:fmtDate(d2),data:v2,backgroundColor:'#0ca678',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top'}},scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{grid:{color:'#f0f2f8'},ticks:{font:{size:9}}}}}});
-  $('cmp-thead').innerHTML=`<tr><th>Entity</th><th class="cmp-d1">Total ${fmtDate(d1)}</th><th class="cmp-d1">Avail ${fmtDate(d1)}</th><th class="cmp-d2">Total ${fmtDate(d2)}</th><th class="cmp-d2">Avail ${fmtDate(d2)}</th><th class="cmp-diff">Δ Total</th><th class="cmp-diff">Δ Available</th></tr>`;
-  let t1=0,t2=0,a1=0,a2=0;
-  const dc=v=>v>0?`<span class="cmp-pos">▲${v.toFixed(2)}</span>`:v<0?`<span class="cmp-neg">▼${Math.abs(v).toFixed(2)}</span>`:`<span class="cmp-zero">—</span>`;
-  const rows=ENTITIES.map(e=>{
-    const c1=compute(da[e]||{}),c2=compute(db[e]||{});
-    t1+=c1.total;t2+=c2.total;a1+=c1.available;a2+=c2.available;
-    return`<tr><td>${e}</td><td>${c1.total.toFixed(2)}</td><td>${c1.available.toFixed(2)}</td><td>${c2.total.toFixed(2)}</td><td>${c2.available.toFixed(2)}</td><td>${dc(+(c2.total-c1.total).toFixed(2))}</td><td>${dc(+(c2.available-c1.available).toFixed(2))}</td></tr>`;
+// ── COMPARE TAB ────────────────────────────────────────────────────────
+let cmpSelectedEntities=new Set(); // empty = all
+let cmpChartType='bar';
+
+function getCmpEntities(){
+  return cmpSelectedEntities.size===0?[...ENTITIES]:[...ENTITIES].filter(e=>cmpSelectedEntities.has(e));
+}
+function toggleCmpEntityFilter(){
+  const dd=$('cmp-entity-dropdown');
+  dd.style.display=dd.style.display==='none'?'block':'none';
+  if(dd.style.display==='block')renderCmpEntityList();
+}
+function renderCmpEntityList(){
+  const list=$('cmp-entity-list');
+  list.innerHTML=ENTITIES.map(e=>{
+    const checked=cmpSelectedEntities.size===0||cmpSelectedEntities.has(e);
+    return`<label style="display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600" onmouseover="this.style.background='#f4f5fa'" onmouseout="this.style.background=''">
+      <input type="checkbox" ${checked?'checked':''} onchange="toggleCmpEntity('${e}',this.checked)" style="accent-color:var(--blue);width:14px;height:14px">
+      ${e}
+    </label>`;
   }).join('');
-  $('cmp-tbody').innerHTML=rows+`<tr class="total-row"><td>Total</td><td>${t1.toFixed(2)}</td><td>${a1.toFixed(2)}</td><td>${t2.toFixed(2)}</td><td>${a2.toFixed(2)}</td><td>${dc(+(t2-t1).toFixed(2))}</td><td>${dc(+(a2-a1).toFixed(2))}</td></tr>`;
+}
+function toggleCmpEntity(entity,checked){
+  if(cmpSelectedEntities.size===0){ENTITIES.forEach(e=>{if(e!==entity)cmpSelectedEntities.add(e);});}
+  else{checked?cmpSelectedEntities.add(entity):cmpSelectedEntities.delete(entity);if(cmpSelectedEntities.size===ENTITIES.length)cmpSelectedEntities=new Set();}
+  updateCmpLabel();renderComparison();
+}
+function cmpSelectAll(){cmpSelectedEntities=new Set();updateCmpLabel();renderCmpEntityList();renderComparison();}
+function cmpClearAll(){cmpSelectedEntities=new Set([ENTITIES[0]]);updateCmpLabel();renderCmpEntityList();renderComparison();}
+function updateCmpLabel(){
+  const lbl=$('cmp-entity-label');if(!lbl)return;
+  lbl.textContent=cmpSelectedEntities.size===0?'All Entities':cmpSelectedEntities.size===1?[...cmpSelectedEntities][0]:cmpSelectedEntities.size+' Entities';
+}
+function setCmpChartType(t){
+  cmpChartType=t;
+  $('cmp-btn-bar').className='btn btn-sm '+(t==='bar'?'btn-blue':'btn-ghost');
+  $('cmp-btn-line').className='btn btn-sm '+(t==='line'?'btn-blue':'btn-ghost');
+  renderComparison();
+}
+document.addEventListener('click',e=>{
+  const dd=$('cmp-entity-dropdown'),btn=$('cmp-entity-btn');
+  if(dd&&!dd.contains(e.target)&&btn&&!btn.contains(e.target))dd.style.display='none';
+});
+
+function getMetricVal(r,metric){
+  if(!r)return 0;
+  const c=compute(r);
+  if(metric==='total')return c.total;
+  if(metric==='available')return c.available;
+  if(metric==='immediate')return(r.bank||0)+(r.sweep||0);
+  if(metric==='investments')return(r.mf||0)+(r.fd||0)+(r.bonds||0);
+  if(metric==='locked')return(r.reserve||0)+(r.restricted||0)+(r.locked_funds||0);
+  return parseFloat(r[metric])||0;
+}
+const METRIC_LABELS={total:'Total Balance',available:'Available Funds',immediate:'Immediate Use',investments:'Investments',locked:'Locked / Reserved',bank:'Bank Balance',sweep:'Sweep Deposit',fd:'Fixed Deposits',mf:'Mutual Funds',bonds:'Bonds/Deb',brs:'BRS'};
+
+function renderComparison(){
+  const d1=$('cmp-date1').value,d2=$('cmp-date2').value;
+  if(!d1||!d2){$('cmp-delta-cards').innerHTML='';$('cmp-tbody').innerHTML='<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--hint)">Select two dates to compare</td></tr>';return;}
+  const da=sheetsData[d1]||{},db=sheetsData[d2]||{};
+  const metric=($('cmp-metric')||{}).value||'total';
+  const mLabel=METRIC_LABELS[metric]||metric;
+  const active=getCmpEntities();
+
+  $('cmp-chart-title').textContent=mLabel+' Comparison · ₹ Cr';
+  $('cmp-subtitle').textContent=fmtDate(d1)+' vs '+fmtDate(d2);
+
+  // ── Delta summary cards ────────────────────────────────────────────
+  const CARD_METRICS=['total','available','immediate','investments','locked'];
+  const cardHTML=CARD_METRICS.map(m=>{
+    const v1=active.reduce((s,e)=>s+getMetricVal(da[e],m),0);
+    const v2=active.reduce((s,e)=>s+getMetricVal(db[e],m),0);
+    const diff=+(v2-v1).toFixed(2);
+    const pct=v1?((diff/v1)*100).toFixed(1):null;
+    const up=diff>0,dn=diff<0;
+    const arrow=up?'▲':dn?'▼':'';
+    const clr=m==='locked'?(up?'var(--red)':'var(--green)'):(up?'var(--green)':'var(--red)');
+    return`<div class="metric-card mc-blue" style="text-align:left">
+      <div class="metric-label">${METRIC_LABELS[m]}</div>
+      <div style="font-size:13px;font-weight:800;color:var(--text);margin:4px 0">₹ ${v2.toFixed(2)} Cr</div>
+      <div style="font-size:11px;color:${diff===0?'var(--hint)':clr};font-weight:700">${arrow} ${diff===0?'No change':'₹ '+Math.abs(diff).toFixed(2)+' Cr'+(pct?' ('+Math.abs(pct)+'%)':'')}</div>
+      <div style="font-size:10px;color:var(--hint);margin-top:2px">was ₹ ${v1.toFixed(2)} Cr</div>
+    </div>`;
+  }).join('');
+  $('cmp-delta-cards').innerHTML=cardHTML;
+
+  // ── Chart ──────────────────────────────────────────────────────────
+  const chartEntities=active.filter(e=>getMetricVal(da[e],metric)>0||getMetricVal(db[e],metric)>0);
+  const v1=chartEntities.map(e=>+getMetricVal(da[e],metric).toFixed(2));
+  const v2=chartEntities.map(e=>+getMetricVal(db[e],metric).toFixed(2));
+  if(cmpChart2)cmpChart2.destroy();
+  cmpChart2=new Chart($('cmpChart'),{
+    type:cmpChartType,
+    data:{
+      labels:chartEntities,
+      datasets:[
+        {label:fmtDate(d1),data:v1,backgroundColor:'#5c7cfa',borderColor:'#5c7cfa',borderRadius:4,tension:.3,fill:false},
+        {label:fmtDate(d2),data:v2,backgroundColor:'#0ca678',borderColor:'#0ca678',borderRadius:4,tension:.3,fill:false},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{size:11}}}},scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{grid:{color:'#f0f2f8'},ticks:{font:{size:9},callback:v=>'₹'+v}}}}
+  });
+
+  // ── Table ──────────────────────────────────────────────────────────
+  const dc=v=>v>0?`<span class="cmp-pos">▲${v.toFixed(2)}</span>`:v<0?`<span class="cmp-neg">▼${Math.abs(v).toFixed(2)}</span>`:`<span class="cmp-zero">—</span>`;
+  $('cmp-thead').innerHTML=`<tr>
+    <th>Entity</th>
+    <th class="cmp-d1">Total ${fmtDate(d1)}</th>
+    <th class="cmp-d1">Avail ${fmtDate(d1)}</th>
+    <th class="cmp-d1">${mLabel} ${fmtDate(d1)}</th>
+    <th class="cmp-d2">Total ${fmtDate(d2)}</th>
+    <th class="cmp-d2">Avail ${fmtDate(d2)}</th>
+    <th class="cmp-d2">${mLabel} ${fmtDate(d2)}</th>
+    <th class="cmp-diff">Δ Total</th>
+    <th class="cmp-diff">Δ Available</th>
+    <th class="cmp-diff">Δ ${mLabel}</th>
+  </tr>`;
+  let t1=0,t2=0,a1=0,a2=0,m1=0,m2=0;
+  const rows=active.map(e=>{
+    const c1=compute(da[e]||{}),c2=compute(db[e]||{});
+    const mv1=+getMetricVal(da[e],metric).toFixed(2);
+    const mv2=+getMetricVal(db[e],metric).toFixed(2);
+    t1+=c1.total;t2+=c2.total;a1+=c1.available;a2+=c2.available;m1+=mv1;m2+=mv2;
+    const noData=c1.total===0&&c2.total===0;
+    return`<tr${noData?' style="opacity:.4"':''}>
+      <td><strong>${e}</strong></td>
+      <td>${c1.total.toFixed(2)}</td><td>${c1.available.toFixed(2)}</td><td>${mv1.toFixed(2)}</td>
+      <td>${c2.total.toFixed(2)}</td><td>${c2.available.toFixed(2)}</td><td>${mv2.toFixed(2)}</td>
+      <td>${dc(+(c2.total-c1.total).toFixed(2))}</td>
+      <td>${dc(+(c2.available-c1.available).toFixed(2))}</td>
+      <td>${dc(+(mv2-mv1).toFixed(2))}</td>
+    </tr>`;
+  }).join('');
+  $('cmp-tbody').innerHTML=rows+
+    `<tr class="total-row">
+      <td>TOTAL</td>
+      <td>${t1.toFixed(2)}</td><td>${a1.toFixed(2)}</td><td>${m1.toFixed(2)}</td>
+      <td>${t2.toFixed(2)}</td><td>${a2.toFixed(2)}</td><td>${m2.toFixed(2)}</td>
+      <td>${dc(+(t2-t1).toFixed(2))}</td>
+      <td>${dc(+(a2-a1).toFixed(2))}</td>
+      <td>${dc(+(m2-m1).toFixed(2))}</td>
+    </tr>`;
+  $('cmp-table-sub').textContent=active.length+' entities · '+fmtDate(d1)+' vs '+fmtDate(d2);
 }
 
 // ── ENTRY TABLE & STATUS ──────────────────────────────────────────────
