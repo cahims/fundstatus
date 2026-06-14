@@ -998,11 +998,16 @@ function parseSheetCSV(csv){
   const idx=k=>{
     const variants=FIELDS[k]||[k];
     for(const v of variants){
-      // Try exact, then cleaned versions
-      const checks=[v, v.replace(/[\s\/]+/g,'_'), v.replace(/[\s\/]+/g,'')];
+      const checks=[
+        v,
+        v.replace(/[\s\/\-]+/g,'_'),
+        v.replace(/[\s\/\-]+/g,''),
+        v.toLowerCase(),
+        v.toLowerCase().replace(/[\s\/\-]+/g,'_'),
+        v.toLowerCase().replace(/[\s\/\-]+/g,''),
+      ];
       for(const c of checks){
         if(colIdx[c]!==undefined)return colIdx[c];
-        if(colIdx[c.toLowerCase()]!==undefined)return colIdx[c.toLowerCase()];
       }
     }
     return -1;
