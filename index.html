@@ -408,63 +408,21 @@ th.cmp-diff{background:#fff9db;color:var(--amber)}
     <!-- ═══ ENTRY ═══ -->
     <div id="tab-entry" style="display:none">
 
-      <!-- EXCEL BULK UPLOAD -->
-      <div class="card" style="padding:20px;margin-bottom:18px">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
-          <div>
-            <div style="font-size:14px;font-weight:800">📂 Bulk Upload via Excel</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px">Upload .xlsx with columns: Date · Entity · Bank Balance · Sweep Deposit · Fixed Deposits · Mutual Funds · Bonds/Debentures · BRS · Reserve Fund · Restricted Fund · Locked Funds · Remarks</div>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()">⬇ Download Template</button>
-            <label class="btn btn-green btn-sm" style="cursor:pointer">
-              📂 Choose Excel File
-              <input type="file" accept=".xlsx,.xls" style="display:none" onchange="handleExcelUpload(event)">
-            </label>
-          </div>
-        </div>
-        <!-- Preview table -->
-        <div id="xl-preview-wrap" style="display:none">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-            <div>
-              <div style="font-size:12px;font-weight:800" id="xl-preview-title">Preview — 0 rows</div>
-              <div style="font-size:11px;color:var(--muted)" id="xl-preview-sub"></div>
-            </div>
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-ghost btn-sm" onclick="clearXlPreview()">✕ Clear</button>
-              <button class="btn btn-blue" id="xl-submit-btn" onclick="submitExcelBatch()">📤 Submit All to Sheet</button>
-            </div>
-          </div>
-          <div id="xl-errors" style="display:none;margin-bottom:10px"></div>
-          <div style="overflow-x:auto;max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius)">
-            <table>
-              <thead id="xl-thead" style="position:sticky;top:0;z-index:2"></thead>
-              <tbody id="xl-tbody"></tbody>
-            </table>
-          </div>
-          <div id="xl-submit-progress" style="display:none;margin-top:10px">
-            <div style="background:#f0f2f8;border-radius:20px;height:8px;overflow:hidden;margin-bottom:6px">
-              <div id="xl-progress-bar" style="height:100%;background:var(--blue);border-radius:20px;transition:width .3s;width:0%"></div>
-            </div>
-            <div style="font-size:11px;color:var(--muted)" id="xl-progress-label">Submitting 0 / 0…</div>
-          </div>
-        </div>
-        <div id="xl-empty" style="padding:20px;text-align:center;color:var(--hint);font-size:12px">Upload an Excel file to preview rows before submitting. Use the template for the correct column order.</div>
-      </div>
 
-      <!-- Entity admin panel (admin only) -->
+      <!-- Entity & Column Management (admin only) -->
       <div class="entity-admin admin-only">
         <div class="ea-head">🏢 Entity & Column Management <span class="badge badge-violet">Admin only</span></div>
+
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:14px">
           <div>
-            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Add entity</div>
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Add Entity</div>
             <div style="display:flex;gap:6px">
               <input type="text" class="form-input" id="new-entity-code" placeholder="e.g. NEWCO" style="text-transform:uppercase;flex:1">
               <button class="btn btn-blue btn-sm" onclick="addEntity()">+ Add</button>
             </div>
           </div>
           <div>
-            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Rename entity <span style="color:var(--green);font-size:9px">(updates Google Sheet too)</span></div>
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Rename Entity <span style="color:var(--green);font-size:9px">(updates Sheet too)</span></div>
             <div style="display:flex;gap:6px">
               <select class="form-input" id="rename-from" style="flex:1"><option value="">Select…</option></select>
               <input type="text" class="form-input" id="rename-to" placeholder="New code" style="text-transform:uppercase;width:100px">
@@ -472,18 +430,39 @@ th.cmp-diff{background:#fff9db;color:var(--amber)}
             </div>
           </div>
         </div>
-        <div style="padding-top:12px;border-top:1px solid var(--border)">
-          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Custom extra columns</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
-            <input type="text" class="form-input" id="new-col-name" placeholder="Column name" style="width:180px">
-            <select class="form-input" id="new-col-type" style="width:120px"><option value="number">Number ₹Cr</option><option value="text">Text</option></select>
-            <button class="btn btn-teal btn-sm" onclick="addCustomCol()">+ Column</button>
-          </div>
-          <div id="custom-col-chips"></div>
-        </div>
-        <div style="padding-top:12px;border-top:1px solid var(--border);margin-top:8px">
+
+        <div style="padding-top:10px;border-top:1px solid var(--border);margin-bottom:14px">
           <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Entities (<span id="entity-count">0</span>)</div>
           <div id="entity-chips"></div>
+        </div>
+
+        <div style="padding-top:12px;border-top:1px solid var(--border)">
+          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">➕ Add Custom Column</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end;margin-bottom:6px">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Column Name</label>
+              <input type="text" class="form-input" id="new-col-name" placeholder="e.g. Commercial Paper">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Type</label>
+              <select class="form-input" id="new-col-type">
+                <option value="number">Number ₹Cr</option>
+                <option value="text">Text</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Counts Towards</label>
+              <select class="form-input" id="new-col-group">
+                <option value="liquid">💧 Liquid Total</option>
+                <option value="investment">📈 Investments Total</option>
+                <option value="deduction">🔒 Deduction (reduces Available)</option>
+                <option value="none">ℹ️ Info only</option>
+              </select>
+            </div>
+            <button class="btn btn-teal btn-sm" onclick="addCustomCol()" style="height:36px;white-space:nowrap">+ Add</button>
+          </div>
+          <div style="font-size:11px;color:var(--hint);margin-bottom:8px">New columns are auto-added to Google Sheet header on next submit.</div>
+          <div id="custom-col-chips"></div>
         </div>
       </div>
 
@@ -808,28 +787,24 @@ let columnsEnsured=false;
 
 async function ensureSheetColumns(){
   if(columnsEnsured)return true;
+  const customColNames=CUSTOM_COLS.map(c=>c.label);
+  const allCols=[...REQUIRED_COLUMNS,...customColNames];
   try{
     const r=await fetch(APPS_SCRIPT_URL,{
       method:'POST',
-      body:JSON.stringify({action:'ENSURE_COLUMNS',columns:REQUIRED_COLUMNS,submittedBy:currentUser?.email||''})
+      body:JSON.stringify({action:'ENSURE_COLUMNS',columns:allCols,submittedBy:currentUser?.email||''})
     });
     const res=await r.json();
     if(res.status==='ok'||res.status==='noop'){
       columnsEnsured=true;
       if(res.added&&res.added.length){
-        showStatus('✓ Sheet updated — added missing columns: '+res.added.join(', '),false);
-        // Refresh data now that columns exist
+        showStatus('✓ Sheet updated — added columns: '+res.added.join(', '),false);
         setTimeout(()=>doRefresh(),1200);
       }
       return true;
-    }else{
-      console.warn('ENSURE_COLUMNS failed:',res.message);
-      return false;
     }
-  }catch(e){
-    console.warn('ensureSheetColumns error:',e.message);
     return false;
-  }
+  }catch(e){console.warn('ensureSheetColumns:',e.message);return false;}
 }
 const PAL=['#3b5bdb','#0ca678','#f08c00','#d6336c','#7048e8','#0c8599','#e8590c','#1098ad','#2f9e44','#862e9c','#c92a2a','#5c7cfa','#20c997','#fd7e14','#e64980'];
 // ══ UTILITIES ════════════════════════════════════════════════════════
@@ -1106,10 +1081,19 @@ function compute(r){
   if(!r)return{total:0,available:0,investments:0,liquid:0};
   const b=r.bank||0,s=r.sweep||0,fd=r.fd||0,mf=r.mf||0,bo=r.bonds||0,brs=r.brs||0;
   const res=r.reserve||0,rest=r.restricted||0,lf=r.locked_funds||0;
-  const total=+(b+s+fd+mf+bo+brs).toFixed(2);
-  const investments=+(fd+mf+bo).toFixed(2);
-  const liquid=+(b+s+brs).toFixed(2);
-  const available=+(total-res-rest-lf).toFixed(2);
+  // Add custom columns to the right group
+  let ccLiq=0,ccInv=0,ccDed=0;
+  CUSTOM_COLS.forEach(c=>{
+    if(c.type!=='number')return;
+    const v=parseFloat(r[c.key])||0;
+    if(c.group==='liquid')ccLiq+=v;
+    else if(c.group==='investment')ccInv+=v;
+    else if(c.group==='deduction')ccDed+=v;
+  });
+  const liquid=+(b+s+brs+ccLiq).toFixed(2);
+  const investments=+(fd+mf+bo+ccInv).toFixed(2);
+  const total=+(liquid+investments).toFixed(2);
+  const available=+(total-res-rest-lf-ccDed).toFixed(2);
   return{total,available,investments,liquid};
 }
 
@@ -1239,17 +1223,28 @@ function quickRename(old){
 // ── CUSTOM COLUMNS ─────────────────────────────────────────────────────
 function saveCC(){localStorage.setItem('bb_cc',JSON.stringify(CUSTOM_COLS));}
 function addCustomCol(){
-  const name=$('new-col-name').value.trim();const type=$('new-col-type').value;
+  const name=$('new-col-name').value.trim();
+  const type=$('new-col-type').value;
+  const group=$('new-col-group').value;
   if(!name){showStatus('Enter column name.',true);return;}
   const key='cc_'+name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
-  if(CUSTOM_COLS.find(c=>c.key===key)){showStatus('Exists.',true);return;}
-  CUSTOM_COLS.push({key,label:name,type});saveCC();$('new-col-name').value='';
-  renderCustomColChips();renderCustomColFields();buildTableHeader();renderAll();showStatus('✓ Column "'+name+'" added.',false);
+  if(CUSTOM_COLS.find(c=>c.key===key)){showStatus('Already exists.',true);return;}
+  CUSTOM_COLS.push({key,label:name,type,group});
+  saveCC();$('new-col-name').value='';
+  columnsEnsured=false; // force re-sync with sheet
+  renderCustomColChips();renderCustomColFields();buildTableHeader();renderAll();
+  ensureSheetColumns();
+  showStatus('✓ Column "'+name+'" added · will appear in Sheet on next submit.',false);
 }
 function removeCustomCol(key){CUSTOM_COLS=CUSTOM_COLS.filter(c=>c.key!==key);saveCC();renderCustomColChips();renderCustomColFields();buildTableHeader();renderAll();}
 function renderCustomColChips(){
   const w=$('custom-col-chips');if(!w)return;
-  w.innerHTML=CUSTOM_COLS.length?CUSTOM_COLS.map(c=>`<span class="col-chip">${c.label} <small>(${c.type})</small><button class="db" onclick="removeCustomCol('${c.key}')">×</button></span>`).join(''):'<span style="font-size:11px;color:var(--hint)">No extra columns.</span>';
+  const groupLabel={liquid:'💧 Liquid',investment:'📈 Investment',deduction:'🔒 Deduction',none:'ℹ️ Info'};
+  w.innerHTML=CUSTOM_COLS.length?CUSTOM_COLS.map(c=>`
+    <span class="col-chip">${c.label}
+      <small style="opacity:.7">(${groupLabel[c.group]||c.group||'info'})</small>
+      <button class="db" onclick="removeCustomCol('${c.key}')">×</button>
+    </span>`).join(''):'<span style="font-size:11px;color:var(--hint)">No custom columns yet.</span>';
 }
 function renderCustomColFields(){
   const w=$('custom-col-fields');if(!w)return;
