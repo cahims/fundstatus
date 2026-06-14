@@ -963,88 +963,79 @@ function parseSheetCSV(csv){
   console.log('CSV HEADERS ('+rawHdr.length+'):', JSON.stringify(rawHdr));
   console.log('CSV FIRST ROW:', lines[1]||'none');
 
-  // Build index map directly from actual headers — no alias guessing
-  // Maps internal key → column index
-  const colIdx={};
-  hdr.forEach((h,i)=>{
-    // Store by exact header
-    colIdx[h]=i;
-    // Also store cleaned version (remove spaces/slashes)
-    colIdx[h.replace(/[\s\/\-]+/g,'_')]=i;
-    colIdx[h.replace(/[\s\/\-]+/g,'')]=i;
+  // Known exact header order from the sheet:
+  // 0:Date 1:Entity 2:Bank Balance 3:Sweep Deposit 4:Fixed Deposits
+  // 5:Mutual Funds 6:Bonds/Deb 7:BRS 8:Reserve Fund 9:Restricted Fund
+  // 10:Locked Funds 11:Remarks 12:Submitted By 13:Submitted By Name
+  // 14:Submitted At 15:Locked 16:Audit Action
+
+  // Build position map from actual headers (handles any order)
+  const pos={};
+  rawHdr.forEach((h,i)=>{
+    // store by lowercased, no spaces, no slashes, no dashes
+    const key=h.toLowerCase().replace(/[\s\/\-]+/g,'');
+    pos[key]=i;
   });
 
-  // Key resolver: tries multiple name variants for each field
-  const FIELDS={
-    date:        ['date'],
-    entity:      ['entity'],
-    bank:        ['bank balance','bank_balance','bank'],
-    sweep:       ['sweep deposit','sweep_deposit','sweep'],
-    fd:          ['fixed deposits','fixed_deposits','fd'],
-    mf:          ['mutual funds','mutual_funds','mf'],
-    bonds:       ['bonds/deb','bondsdeb','bonds_deb','bonds'],
-    brs:         ['brs'],
-    reserve:     ['reserve fund','reserve_fund','reserve'],
-    restricted:  ['restricted fund','restricted_fund','restricted'],
-    locked_funds:['locked funds','locked_funds','locked fund'],
-    submitted_by:     ['submitted by','submitted_by'],
-    submitted_by_name:['submitted by name','submitted_by_name'],
-    submitted_at:     ['submitted at','submitted_at'],
-    locked:      ['locked'],
-    remarks:     ['remarks'],
-    audit_action:['audit action','audit_action'],
+  const getCol=name=>{
+    const key=name.toLowerCase().replace(/[\s\/\-]+/g,'');
+    return pos[key]!==undefined?pos[key]:-1;
   };
 
-  const idx=k=>{
-    const variants=FIELDS[k]||[k];
-    for(const v of variants){
-      const checks=[
-        v,
-        v.replace(/[\s\/\-]+/g,'_'),
-        v.replace(/[\s\/\-]+/g,''),
-        v.toLowerCase(),
-        v.toLowerCase().replace(/[\s\/\-]+/g,'_'),
-        v.toLowerCase().replace(/[\s\/\-]+/g,''),
-      ];
-      for(const c of checks){
-        if(colIdx[c]!==undefined)return colIdx[c];
-      }
-    }
-    return -1;
+  // Map each field to its column index
+  const C={
+    date:        getCol('date'),
+    entity:      getCol('entity'),
+    bank:        getCol('bankbalance'),
+    sweep:       getCol('sweepdeposit'),
+    fd:          getCol('fixeddeposits'),
+    mf:          getCol('mutualfunds'),
+    bonds:       getCol('bondsdeb'),
+    brs:         getCol('brs'),
+    reserve:     getCol('reservefund'),
+    restricted:  getCol('restrictedfund'),
+    locked_funds:getCol('lockedfunds'),
+    remarks:     getCol('remarks'),
+    submitted_by:     getCol('submittedby'),
+    submitted_by_name:getCol('submittedbyname'),
+    submitted_at:     getCol('submittedat'),
+    locked:      getCol('locked'),
+    audit_action:getCol('auditaction'),
   };
 
-  // Log resolved indices
-  const resolvedMap={};
-  Object.keys(FIELDS).forEach(k=>{
-    const i=idx(k);
-    resolvedMap[k]={col:i,header:i>=0?rawHdr[i]:'NOT FOUND'};
+  console.log('COLUMN POSITIONS:', JSON.stringify(C));
+  console.log('RAW HEADERS:', JSON.stringify(rawHdr));
+
+  // Store for debug panel
+  window._csvColMap={};
+  Object.keys(C).forEach(k=>{
+    const i=C[k];
+    window._csvColMap[k]={col:i,header:i>=0?rawHdr[i]:'NOT FOUND'};
   });
-  console.log('COLUMN MAP:', JSON.stringify(resolvedMap));
-  window._csvColMap=resolvedMap;
+
+  const cv=(cols,k)=>C[k]>=0?(cols[C[k]]||'').replace(/"/g,'').trim():'';
+  const nv=(cols,k)=>parseFloat(cv(cols,k))||0;
 
   sheetsData={};auditLog=[];
   for(let i=1;i<lines.length;i++){
     const cols=lines[i].replace(/\r/g,'').split(sep).map(c=>c.replace(/"/g,'').trim());
     if(cols.length<2)continue;
-    const cv=k=>cols[idx(k)]!==undefined?(cols[idx(k)]||'').replace(/"/g,'').trim():'';
-    const nv=k=>parseFloat(cv(k))||0;
-    const date=cv('date'), entity=cv('entity').toUpperCase();
+    const date=cv(cols,'date'), entity=cv(cols,'entity').toUpperCase();
     if(!date||!entity)continue;
     const row={
-      bank:nv('bank'), sweep:nv('sweep'), fd:nv('fd'),
-      mf:nv('mf'), bonds:nv('bonds'), brs:nv('brs'),
-      reserve:nv('reserve'), restricted:nv('restricted'),
-      locked_funds:nv('locked_funds'),
-      submittedBy:cv('submitted_by'),
-      submittedByName:cv('submitted_by_name')||cv('submitted_by'),
-      submittedAt:cv('submitted_at'),
-      locked:['true','1'].includes(cv('locked').toLowerCase()),
-      remarks:cv('remarks'),
-      action:cv('audit_action')||'SUBMIT',
+      bank:nv(cols,'bank'), sweep:nv(cols,'sweep'), fd:nv(cols,'fd'),
+      mf:nv(cols,'mf'), bonds:nv(cols,'bonds'), brs:nv(cols,'brs'),
+      reserve:nv(cols,'reserve'), restricted:nv(cols,'restricted'),
+      locked_funds:nv(cols,'locked_funds'),
+      submittedBy:cv(cols,'submitted_by'),
+      submittedByName:cv(cols,'submitted_by_name')||cv(cols,'submitted_by'),
+      submittedAt:cv(cols,'submitted_at'),
+      locked:['true','1'].includes(cv(cols,'locked').toLowerCase()),
+      remarks:cv(cols,'remarks'),
+      action:cv(cols,'audit_action')||'SUBMIT',
     };
-    // Log first data row parse result
-    if(i===1)console.log('FIRST ROW PARSED:', entity, date, JSON.stringify({bank:row.bank,sweep:row.sweep,fd:row.fd,mf:row.mf,bonds:row.bonds,brs:row.brs}));
-    CUSTOM_COLS.forEach(c=>{row[c.key]=cv(c.key);});
+    if(i===1)console.log('ROW1 PARSED:',entity,date,{bank:row.bank,sweep:row.sweep,fd:row.fd,mf:row.mf,bonds:row.bonds,brs:row.brs,restricted:row.restricted,locked_funds:row.locked_funds});
+    CUSTOM_COLS.forEach(c=>{row[c.key]=cv(cols,c.key);});
     if(!sheetsData[date])sheetsData[date]={};
     sheetsData[date][entity]=row;
     auditLog.push({date,entity,...row});
