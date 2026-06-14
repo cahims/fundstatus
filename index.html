@@ -963,55 +963,45 @@ function parseSheetCSV(csv){
   console.log('CSV HEADERS ('+rawHdr.length+'):', JSON.stringify(rawHdr));
   console.log('CSV FIRST ROW:', lines[1]||'none');
 
-  // Known exact header order from the sheet:
+  // Sheet columns (0-based):
   // 0:Date 1:Entity 2:Bank Balance 3:Sweep Deposit 4:Fixed Deposits
   // 5:Mutual Funds 6:Bonds/Deb 7:BRS 8:Reserve Fund 9:Restricted Fund
-  // 10:Locked Funds 11:Remarks 12:Submitted By 13:Submitted By Name
-  // 14:Submitted At 15:Locked 16:Audit Action
+  // 10:Locked Funds 11:Remarks
+  // (Submitted By, Submitted By Name, Submitted At, Locked, Audit Action
+  //  may or may not exist — use header detection for those)
 
-  // Build position map from actual headers (handles any order)
   const pos={};
   rawHdr.forEach((h,i)=>{
-    // store by lowercased, no spaces, no slashes, no dashes
     const key=h.toLowerCase().replace(/[\s\/\-]+/g,'');
     pos[key]=i;
   });
+  const getCol=name=>{ const key=name.toLowerCase().replace(/[\s\/\-]+/g,''); return pos[key]!==undefined?pos[key]:-1; };
 
-  const getCol=name=>{
-    const key=name.toLowerCase().replace(/[\s\/\-]+/g,'');
-    return pos[key]!==undefined?pos[key]:-1;
-  };
-
-  // Map each field to its column index
   const C={
-    date:        getCol('date'),
-    entity:      getCol('entity'),
-    bank:        getCol('bankbalance'),
-    sweep:       getCol('sweepdeposit'),
-    fd:          getCol('fixeddeposits'),
-    mf:          getCol('mutualfunds'),
-    bonds:       getCol('bondsdeb'),
-    brs:         getCol('brs'),
-    reserve:     getCol('reservefund'),
-    restricted:  getCol('restrictedfund'),
-    locked_funds:getCol('lockedfunds'),
-    remarks:     getCol('remarks'),
-    submitted_by:     getCol('submittedby'),
-    submitted_by_name:getCol('submittedbyname'),
-    submitted_at:     getCol('submittedat'),
-    locked:      getCol('locked'),
-    audit_action:getCol('auditaction'),
+    date:         getCol('date'),
+    entity:       getCol('entity'),
+    bank:         getCol('bankbalance'),
+    sweep:        getCol('sweepdeposit'),
+    fd:           getCol('fixeddeposits'),
+    mf:           getCol('mutualfunds'),
+    bonds:        getCol('bondsdeb'),
+    brs:          getCol('brs'),
+    reserve:      getCol('reservefund'),
+    restricted:   getCol('restrictedfund'),
+    locked_funds: getCol('lockedfunds'),
+    remarks:      getCol('remarks'),
+    submitted_by:      getCol('submittedby'),
+    submitted_by_name: getCol('submittedbyname'),
+    submitted_at:      getCol('submittedat'),
+    locked:       getCol('locked'),
+    audit_action: getCol('auditaction'),
   };
 
-  console.log('COLUMN POSITIONS:', JSON.stringify(C));
   console.log('RAW HEADERS:', JSON.stringify(rawHdr));
+  console.log('COLUMN POSITIONS:', JSON.stringify(C));
 
-  // Store for debug panel
   window._csvColMap={};
-  Object.keys(C).forEach(k=>{
-    const i=C[k];
-    window._csvColMap[k]={col:i,header:i>=0?rawHdr[i]:'NOT FOUND'};
-  });
+  Object.keys(C).forEach(k=>{ const i=C[k]; window._csvColMap[k]={col:i,header:i>=0?rawHdr[i]:'NOT FOUND'}; });
 
   const cv=(cols,k)=>C[k]>=0?(cols[C[k]]||'').replace(/"/g,'').trim():'';
   const nv=(cols,k)=>parseFloat(cv(cols,k))||0;
@@ -1030,11 +1020,11 @@ function parseSheetCSV(csv){
       submittedBy:cv(cols,'submitted_by'),
       submittedByName:cv(cols,'submitted_by_name')||cv(cols,'submitted_by'),
       submittedAt:cv(cols,'submitted_at'),
-      locked:['true','1'].includes(cv(cols,'locked').toLowerCase()),
+      locked:C.locked>=0?['true','1'].includes(cv(cols,'locked').toLowerCase()):true,
       remarks:cv(cols,'remarks'),
       action:cv(cols,'audit_action')||'SUBMIT',
     };
-    if(i===1)console.log('ROW1 PARSED:',entity,date,{bank:row.bank,sweep:row.sweep,fd:row.fd,mf:row.mf,bonds:row.bonds,brs:row.brs,restricted:row.restricted,locked_funds:row.locked_funds});
+    if(i===1)console.log('ROW1:',entity,date,{bank:row.bank,sweep:row.sweep,fd:row.fd,mf:row.mf,bonds:row.bonds,brs:row.brs,restricted:row.restricted,locked_funds:row.locked_funds});
     CUSTOM_COLS.forEach(c=>{row[c.key]=cv(cols,c.key);});
     if(!sheetsData[date])sheetsData[date]={};
     sheetsData[date][entity]=row;
