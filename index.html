@@ -6,7 +6,6 @@
 <title>Bank Balance Hub</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <style>
@@ -21,7 +20,7 @@
 }
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
 
-/* ── AUTH SCREEN ── */
+/* AUTH */
 #auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1e3a6e 0%,#2563eb 60%,#0d9488 100%)}
 .auth-card{background:#fff;border-radius:16px;padding:40px 36px;width:380px;box-shadow:0 24px 60px rgba(0,0,0,.18)}
 .auth-logo{font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px;margin-bottom:6px}.auth-logo span{color:var(--blue)}
@@ -33,10 +32,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .auth-btn:hover{background:#1d4ed8}
 .auth-btn:disabled{opacity:.6;cursor:default}
 .auth-err{background:var(--red-lt);border:1px solid var(--red-bd);color:var(--red);border-radius:var(--radius);padding:9px 12px;font-size:13px;margin-top:14px;display:none}
-.auth-forgot{text-align:right;margin-top:8px}<a class="forgot-link" style="font-size:12px;color:var(--blue);text-decoration:none;cursor:pointer">Forgot password?</a>
 .auth-ok{background:var(--green-lt);border:1px solid var(--green-bd);color:var(--green);border-radius:var(--radius);padding:9px 12px;font-size:13px;margin-top:14px;display:none}
 
-/* ── APP SHELL ── */
+/* APP SHELL */
 #app-screen{display:none}
 .topbar{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
 .topbar-left{display:flex;align-items:center;gap:16px}
@@ -49,7 +47,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .btn-green{background:var(--green);color:#fff}.btn-green:hover{background:#15803d}
 .btn-red{background:var(--red);color:#fff}.btn-red:hover{background:#b91c1c}
 .btn-amber{background:var(--amber);color:#fff}.btn-amber:hover{background:#b45309}
-.user-chip{display:flex;align-items:center;gap:8px;padding:5px 10px;background:#f8fafc;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-size:13px;font-weight:500}
+.btn-purple{background:var(--purple);color:#fff}.btn-purple:hover{background:#6d28d9}
+.user-chip{display:flex;align-items:center;gap:8px;padding:5px 10px;background:#f8fafc;border-radius:20px;border:1px solid var(--border);font-size:13px;font-weight:500}
 .avatar{width:26px;height:26px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0}
 .avatar.admin{background:var(--purple)}
 .sync-chip{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600}
@@ -57,9 +56,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sync-err{background:var(--red-lt);border:1px solid var(--red-bd);color:var(--red)}
 .sync-loading{background:var(--blue-lt);border:1px solid var(--blue-bd);color:var(--blue)}
 
-/* ── MAIN ── */
-.main{max-width:1400px;margin:0 auto;padding:24px}
-.tabs{display:flex;gap:2px;background:#f1f5f9;padding:4px;border-radius:var(--radius);margin-bottom:20px;width:fit-content}
+/* MAIN */
+.main{max-width:1500px;margin:0 auto;padding:24px}
+.tabs{display:flex;gap:2px;background:#f1f5f9;padding:4px;border-radius:var(--radius);margin-bottom:20px;width:fit-content;flex-wrap:wrap}
 .tab{padding:7px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;color:var(--muted);transition:all .15s}
 .tab.active{background:#fff;color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .tab.admin-only{display:none}
@@ -92,6 +91,7 @@ tr:hover:not(.total-row) td{background:#fafbff}
 .badge-green{background:var(--green-lt);color:var(--green)}
 .badge-amber{background:var(--amber-lt);color:var(--amber)}
 .badge-red{background:var(--red-lt);color:var(--red)}
+.badge-blue{background:var(--blue-lt);color:var(--blue)}
 .mv-pos{color:var(--green);font-weight:700}
 .mv-neg{color:var(--red);font-weight:700}
 .mv-zero{color:var(--hint)}
@@ -113,12 +113,12 @@ select.form-input{cursor:pointer}
 .lock-badge{display:inline-flex;align-items:center;gap:4px;background:var(--amber-lt);border:1px solid var(--amber-bd);color:var(--amber);padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700}
 .preview-box{background:var(--blue-lt);border-radius:var(--radius);padding:9px 12px;font-size:13px;color:var(--blue);font-weight:700}
 
-/* AUDIT TRAIL */
+/* AUDIT */
 .audit-row td{font-size:12px}
 .audit-who{font-weight:600;color:var(--text)}
 .audit-time{color:var(--hint);font-size:11px}
 
-/* STATUS TAB */
+/* STATUS */
 .sub-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
 .sub-card{background:#f8fafc;border-radius:var(--radius);padding:10px 12px;border:1px solid var(--border)}
 .sub-entity{font-weight:700;font-size:13px}
@@ -129,16 +129,20 @@ select.form-input{cursor:pointer}
 /* MODAL */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center}
 .overlay.open{display:flex}
-.modal{background:#fff;border-radius:var(--radius-lg);width:460px;max-width:96vw;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.15);max-height:90vh;overflow-y:auto}
+.modal{background:#fff;border-radius:var(--radius-lg);width:500px;max-width:96vw;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.15);max-height:90vh;overflow-y:auto}
 .modal-title{font-size:16px;font-weight:800;margin-bottom:4px}
 .modal-sub{font-size:13px;color:var(--muted);margin-bottom:20px}
 .modal-field{margin-bottom:14px}
 .modal-field label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
-.modal-field input,.modal-field select{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;outline:none;font-family:inherit}
-.modal-field input:focus,.modal-field select:focus{border-color:var(--blue)}
+.modal-field input,.modal-field select,.modal-field textarea{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;outline:none;font-family:inherit}
+.modal-field input:focus,.modal-field select:focus,.modal-field textarea:focus{border-color:var(--blue)}
 .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
 .info-box{background:var(--blue-lt);border:1px solid var(--blue-bd);border-radius:var(--radius);padding:10px 14px;font-size:13px;color:#1e40af;margin-bottom:16px;line-height:1.6}
 .warn-box{background:var(--amber-lt);border:1px solid var(--amber-bd);border-radius:var(--radius);padding:10px 14px;font-size:13px;color:#78350f;margin-bottom:16px;line-height:1.6}
+.empty-state{padding:48px 24px;text-align:center;color:var(--hint)}
+.empty-state .icon{font-size:36px;margin-bottom:12px}
+.empty-state .msg{font-size:14px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.empty-state .sub{font-size:13px}
 
 /* STATUS BAR */
 .status-bar{border-radius:var(--radius);padding:10px 14px;font-size:13px;display:none;align-items:center;gap:8px;margin-bottom:16px}
@@ -146,10 +150,34 @@ select.form-input{cursor:pointer}
 .status-ok{background:var(--green-lt);border:1px solid var(--green-bd);color:var(--green)}
 .status-err{background:var(--red-lt);border:1px solid var(--red-bd);color:var(--red)}
 
-/* CONFIG NOTICE */
-.config-notice{background:#1e3a6e;color:#93c5fd;border-radius:var(--radius);padding:12px 16px;font-size:13px;margin-bottom:20px;line-height:1.7;display:none}
-.config-notice code{background:rgba(255,255,255,.15);padding:2px 6px;border-radius:4px;font-family:monospace;font-size:12px}
+/* DATE FILTER BAR */
+.filter-bar{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:20px;flex-wrap:wrap}
+.filter-bar label{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+.filter-bar input[type=date]{padding:6px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;outline:none;cursor:pointer}
+.filter-bar input[type=date]:focus{border-color:var(--blue)}
+.filter-sep{color:var(--hint);font-size:13px}
 
+/* COMPARISON TABLE */
+.cmp-pos{color:var(--green);font-weight:700}
+.cmp-neg{color:var(--red);font-weight:700}
+.cmp-zero{color:var(--hint)}
+th.cmp-d1{background:#eff6ff;color:var(--blue)}
+th.cmp-d2{background:#f0fdf4;color:var(--green)}
+th.cmp-diff{background:#fffbeb;color:var(--amber)}
+
+/* ENTITY MANAGEMENT (admin) */
+.entity-chip{display:inline-flex;align-items:center;gap:6px;background:#f8fafc;border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:13px;font-weight:600;margin:3px}
+.entity-chip .rename-btn{background:none;border:none;cursor:pointer;color:var(--blue);font-size:12px;padding:0 2px}
+.entity-chip .del-btn{background:none;border:none;cursor:pointer;color:var(--red);font-size:14px;padding:0 2px;line-height:1}
+
+/* CUSTOM COLUMNS */
+.col-chip{display:inline-flex;align-items:center;gap:6px;background:var(--blue-lt);border:1px solid var(--blue-bd);border-radius:20px;padding:4px 10px;font-size:12px;font-weight:600;color:var(--blue);margin:3px}
+.col-chip .del-btn{background:none;border:none;cursor:pointer;color:var(--red);font-size:14px;line-height:1;padding:0}
+
+/* LINE CHART (comparison) */
+.compare-chart-wrap{background:#fff;border-radius:10px;border:1px solid var(--border);padding:16px;margin-bottom:20px}
+
+@keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:900px){
   .metric-row{grid-template-columns:repeat(2,1fr)}
   .chart-grid{grid-template-columns:1fr}
@@ -160,7 +188,7 @@ select.form-input{cursor:pointer}
 </head>
 <body>
 
-<!-- ══════════════ AUTH SCREEN ══════════════ -->
+<!-- AUTH -->
 <div id="auth-screen">
   <div class="auth-card">
     <div class="auth-logo">Bank<span>Balance</span> Hub</div>
@@ -169,23 +197,22 @@ select.form-input{cursor:pointer}
     <input class="auth-input" type="email" id="login-email" placeholder="you@company.com" autocomplete="email">
     <label class="auth-label">Password</label>
     <input class="auth-input" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-    <div class="auth-forgot"><a class="forgot-link" onclick="doForgot()" style="font-size:12px;color:var(--blue);text-decoration:none;cursor:pointer">Forgot password?</a></div>
+    <div style="text-align:right;margin-top:8px"><a onclick="doForgot()" style="font-size:12px;color:var(--blue);text-decoration:none;cursor:pointer">Forgot password?</a></div>
     <button class="auth-btn" id="login-btn" onclick="doLogin()">Sign in</button>
     <div class="auth-err" id="auth-err"></div>
     <div class="auth-ok" id="auth-ok"></div>
   </div>
 </div>
 
-<!-- ══════════════ APP SCREEN ══════════════ -->
+<!-- APP -->
 <div id="app-screen">
-  <!-- Topbar -->
   <div class="topbar">
     <div class="topbar-left">
       <div class="logo">Bank<span>Balance</span> Hub</div>
       <div class="date-badge" id="today-badge"></div>
     </div>
     <div class="topbar-right">
-      <span class="sync-chip sync-loading" id="sync-chip">⏳ Connecting...</span>
+      <span class="sync-chip sync-loading" id="sync-chip">⏳ Connecting…</span>
       <div class="user-chip">
         <div class="avatar" id="top-avatar">?</div>
         <span id="top-name">—</span>
@@ -198,24 +225,32 @@ select.form-input{cursor:pointer}
   </div>
 
   <div class="main">
-    <!-- Config notice (shown if Firebase not configured) -->
-    <div class="config-notice" id="config-notice">
-      ⚙️ <strong>Firebase not yet configured.</strong> Open <code>dashboard.html</code>, find <code>FIREBASE_CONFIG</code> near the top of the script, and paste your Firebase project credentials. See <code>SETUP.md</code> for instructions. Running in <strong>demo mode</strong> with sample data.
-    </div>
-
     <div class="status-bar" id="status-bar"></div>
 
-    <!-- Tabs -->
+    <!-- TABS -->
     <div class="tabs">
       <div class="tab active" onclick="switchTab('dashboard',this)">📊 Dashboard</div>
+      <div class="tab" onclick="switchTab('compare',this)">📅 Date Comparison</div>
       <div class="tab" onclick="switchTab('entry',this)">✏️ Enter Data</div>
       <div class="tab" onclick="switchTab('status',this)">✅ Status</div>
-      <div class="tab admin-only" id="tab-audit-btn" onclick="switchTab('audit',this)">🔍 Audit Trail</div>
-      <div class="tab admin-only" id="tab-users-btn" onclick="switchTab('users',this)">👥 Users</div>
+      <div class="tab admin-only" onclick="switchTab('audit',this)">🔍 Audit Trail</div>
+      <div class="tab admin-only" onclick="switchTab('entities',this)">🏢 Entities</div>
+      <div class="tab admin-only" onclick="switchTab('users',this)">👥 Users</div>
     </div>
 
-    <!-- ── DASHBOARD TAB ── -->
+    <!-- ══ DASHBOARD TAB ══ -->
     <div id="tab-dashboard">
+      <!-- Date filter -->
+      <div class="filter-bar">
+        <label>View date</label>
+        <input type="date" id="dash-date" onchange="onDashDateChange()">
+        <button class="btn btn-ghost" onclick="setDashToday()">Today</button>
+        <button class="btn btn-ghost" onclick="shiftDashDate(-1)">◀ Prev</button>
+        <button class="btn btn-ghost" onclick="shiftDashDate(1)">Next ▶</button>
+        <span class="filter-sep" id="dash-date-label" style="font-weight:600;color:var(--text)"></span>
+        <span style="margin-left:auto;font-size:12px;color:var(--hint)" id="data-src-label"></span>
+      </div>
+
       <div class="metric-row" id="metric-row"></div>
       <div class="chart-grid">
         <div class="chart-card">
@@ -230,14 +265,17 @@ select.form-input{cursor:pointer}
       </div>
       <div class="card">
         <div class="card-header">
-          <div><div class="card-title">Consolidated balances — <span id="table-date-label"></span></div><div class="card-sub">All figures ₹ Crores · <span id="data-src-label"></span></div></div>
+          <div>
+            <div class="card-title">Consolidated balances — <span id="table-date-label"></span></div>
+            <div class="card-sub">All figures ₹ Crores</div>
+          </div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <div class="search-box">🔍 <input type="text" placeholder="Search entity…" oninput="filterTable(this.value)"></div>
           </div>
         </div>
         <div style="overflow-x:auto">
           <table id="main-table">
-            <thead><tr>
+            <thead id="main-thead"><tr>
               <th>Entity</th><th>Bank (a)</th><th>Sweep TD (b)</th><th>FD (c)</th>
               <th>Investment (d)</th><th>BRS (e)</th><th>Liquid (f)</th>
               <th>Liquid & MF (g)</th><th>Treasury (h)</th><th>Reserve (i)</th>
@@ -249,7 +287,39 @@ select.form-input{cursor:pointer}
       </div>
     </div>
 
-    <!-- ── ENTRY TAB ── -->
+    <!-- ══ DATE COMPARISON TAB ══ -->
+    <div id="tab-compare" style="display:none">
+      <div class="filter-bar">
+        <label>Date 1</label>
+        <input type="date" id="cmp-date1" onchange="renderComparison()">
+        <span class="filter-sep">vs</span>
+        <label>Date 2</label>
+        <input type="date" id="cmp-date2" onchange="renderComparison()">
+        <button class="btn btn-blue" onclick="renderComparison()">Compare</button>
+      </div>
+
+      <!-- Trend chart -->
+      <div class="compare-chart-wrap">
+        <div class="chart-title" id="cmp-chart-title">Total fund comparison · ₹ Crores</div>
+        <div style="position:relative;height:240px"><canvas id="cmpChart"></canvas></div>
+      </div>
+
+      <!-- Side-by-side table -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Entity-wise comparison</div>
+          <div class="card-sub" id="cmp-subtitle"></div>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead id="cmp-thead"></thead>
+            <tbody id="cmp-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ ENTRY TAB ══ -->
     <div id="tab-entry" style="display:none">
       <div class="entry-panel">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:4px">
@@ -296,6 +366,8 @@ select.form-input{cursor:pointer}
             <label class="form-label">Reserve Fund (i)</label>
             <input type="number" step="0.01" class="form-input" id="f-reserve" placeholder="0.00" oninput="updatePreview()">
           </div>
+          <!-- Dynamic custom columns injected here -->
+          <div id="custom-col-fields"></div>
           <div class="form-group">
             <label class="form-label">Remarks (optional)</label>
             <input type="text" class="form-input" id="f-remarks" placeholder="Any note…">
@@ -311,8 +383,6 @@ select.form-input{cursor:pointer}
           <span id="submit-spinner" style="display:none;align-items:center;gap:6px;font-size:13px;color:var(--muted)"><span style="animation:spin 1s linear infinite;display:inline-block">⏳</span> Submitting…</span>
         </div>
       </div>
-
-      <!-- Previous entries for today -->
       <div class="card">
         <div class="card-header">
           <div class="card-title">Today's submissions</div>
@@ -320,21 +390,21 @@ select.form-input{cursor:pointer}
         </div>
         <div style="overflow-x:auto">
           <table>
-            <thead><tr><th>Entity</th><th>Bank</th><th>Sweep</th><th>FD</th><th>Inv</th><th>BRS</th><th>Liq & MF</th><th>Reserve</th><th>Total</th><th>Submitted by</th><th>Time</th><th>Status</th></tr></thead>
+            <thead><tr><th>Entity</th><th>Bank</th><th>Sweep</th><th>FD</th><th>Inv</th><th>BRS</th><th>Liq & MF</th><th>Reserve</th><th>Total</th><th>By</th><th>Time</th><th>Status</th></tr></thead>
             <tbody id="entry-tbody"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- ── STATUS TAB ── -->
+    <!-- ══ STATUS TAB ══ -->
     <div id="tab-status" style="display:none">
       <div class="card" style="padding:20px">
         <div class="card-title" style="margin-bottom:4px">Submission status — <span id="status-date-label"></span></div>
         <div class="card-sub" style="margin-bottom:16px">Data sourced from Google Sheet</div>
         <div class="sub-grid" id="sub-grid"></div>
       </div>
-      <div class="card" style="margin-top:0">
+      <div class="card">
         <div class="card-header"><div class="card-title">Summary log</div></div>
         <div style="overflow-x:auto">
           <table><thead><tr><th>Entity</th><th>Liquid ₹Cr</th><th>Treasury ₹Cr</th><th>Total ₹Cr</th><th>Submitted by</th><th>Time</th><th>Status</th></tr></thead>
@@ -343,29 +413,91 @@ select.form-input{cursor:pointer}
       </div>
     </div>
 
-    <!-- ── AUDIT TRAIL TAB (admin only) ── -->
+    <!-- ══ AUDIT TAB (admin) ══ -->
     <div id="tab-audit" style="display:none">
-      <div class="info-box">Full history of every submission and edit. Only visible to admin accounts.</div>
+      <div class="info-box">Full history of every submission and admin edit. Visible to admins only.</div>
       <div class="card">
         <div class="card-header">
           <div class="card-title">Audit trail</div>
-          <div style="display:flex;gap:8px">
-            <select class="form-input" id="audit-entity-filter" onchange="renderAudit()" style="width:140px;padding:6px 8px">
-              <option value="">All entities</option>
-            </select>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <select class="form-input" id="audit-entity-filter" onchange="renderAudit()" style="width:140px;padding:6px 8px"><option value="">All entities</option></select>
             <input type="date" class="form-input" id="audit-date-filter" onchange="renderAudit()" style="width:150px;padding:6px 8px">
           </div>
         </div>
         <div style="overflow-x:auto">
           <table class="audit-row">
-            <thead><tr><th>Time</th><th>Entity</th><th>Date</th><th>Action</th><th>By (email)</th><th>Bank</th><th>Sweep</th><th>FD</th><th>Inv</th><th>BRS</th><th>Liq&MF</th><th>Reserve</th><th>Total</th><th>Remarks</th></tr></thead>
+            <thead><tr><th>Time</th><th>Entity</th><th>Date</th><th>Action</th><th>By</th><th>Bank</th><th>Sweep</th><th>FD</th><th>Inv</th><th>BRS</th><th>Liq&MF</th><th>Reserve</th><th>Total</th><th>Remarks</th></tr></thead>
             <tbody id="audit-tbody"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- ── USERS TAB (admin only) ── -->
+    <!-- ══ ENTITIES TAB (admin) ══ -->
+    <div id="tab-entities" style="display:none">
+      <div class="warn-box">Changes to entities only affect this dashboard locally. To permanently update, also edit the <code>ENTITIES</code> array in the HTML file.</div>
+
+      <!-- Add entity -->
+      <div class="card" style="padding:20px;margin-bottom:16px">
+        <div style="font-size:15px;font-weight:800;margin-bottom:14px">Add new entity</div>
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+          <div class="form-group" style="flex:1;min-width:160px">
+            <label class="form-label">Entity code</label>
+            <input type="text" class="form-input" id="new-entity-code" placeholder="e.g. NEWCO" style="text-transform:uppercase">
+          </div>
+          <div class="form-group" style="flex:2;min-width:200px">
+            <label class="form-label">Full name (optional)</label>
+            <input type="text" class="form-input" id="new-entity-name" placeholder="New Company Ltd">
+          </div>
+          <button class="btn btn-blue" onclick="addEntity()">+ Add Entity</button>
+        </div>
+      </div>
+
+      <!-- Rename entity -->
+      <div class="card" style="padding:20px;margin-bottom:16px">
+        <div style="font-size:15px;font-weight:800;margin-bottom:14px">Rename entity</div>
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+          <div class="form-group" style="flex:1;min-width:140px">
+            <label class="form-label">Existing entity</label>
+            <select class="form-input" id="rename-from"><option value="">Select…</option></select>
+          </div>
+          <div class="form-group" style="flex:1;min-width:140px">
+            <label class="form-label">New code</label>
+            <input type="text" class="form-input" id="rename-to" placeholder="NEWCODE" style="text-transform:uppercase">
+          </div>
+          <button class="btn btn-amber" onclick="renameEntity()">Rename</button>
+        </div>
+      </div>
+
+      <!-- Add custom column -->
+      <div class="card" style="padding:20px;margin-bottom:16px">
+        <div style="font-size:15px;font-weight:800;margin-bottom:6px">Custom columns</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Add extra data columns to the main table and entry form (e.g. "OD Limit", "CC Balance")</div>
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+          <div class="form-group" style="flex:1;min-width:160px">
+            <label class="form-label">Column name</label>
+            <input type="text" class="form-input" id="new-col-name" placeholder="e.g. OD Limit">
+          </div>
+          <div class="form-group" style="min-width:120px">
+            <label class="form-label">Type</label>
+            <select class="form-input" id="new-col-type">
+              <option value="number">Number (₹ Cr)</option>
+              <option value="text">Text</option>
+            </select>
+          </div>
+          <button class="btn btn-blue" onclick="addCustomCol()">+ Add Column</button>
+        </div>
+        <div style="margin-top:12px" id="custom-col-chips"></div>
+      </div>
+
+      <!-- Current entities list -->
+      <div class="card" style="padding:20px">
+        <div style="font-size:15px;font-weight:800;margin-bottom:12px">Current entities (<span id="entity-count">0</span>)</div>
+        <div id="entity-chips"></div>
+      </div>
+    </div>
+
+    <!-- ══ USERS TAB (admin) ══ -->
     <div id="tab-users" style="display:none">
       <div class="info-box">Create login accounts for team members. Users can enter data for any entity. Admin can edit locked submissions.</div>
       <div class="card" style="padding:20px;margin-bottom:16px">
@@ -386,24 +518,21 @@ select.form-input{cursor:pointer}
               <option value="admin">Admin (can edit locked rows)</option>
             </select>
           </div>
-          <div>
-            <button class="btn btn-blue" onclick="createUser()">+ Create account</button>
-          </div>
+          <button class="btn btn-blue" onclick="createUser()">+ Create account</button>
         </div>
-        <div class="warn-box" style="margin-top:14px;margin-bottom:0">⚠️ A temporary password will be shown once. The user must change it on first login. Firebase → Authentication → Email/Password must be enabled.</div>
+        <div class="warn-box" style="margin-top:14px;margin-bottom:0">⚠️ A temporary password will be shown once. The user must change it on first login.</div>
       </div>
       <div class="card">
         <div class="card-header"><div class="card-title">Team members</div></div>
         <div style="overflow-x:auto">
-          <table><thead><tr><th>Email</th><th>Name</th><th>Role</th><th>UID</th><th>Actions</th></tr></thead>
+          <table><thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Actions</th></tr></thead>
           <tbody id="users-tbody"></tbody></table>
         </div>
       </div>
-      <!-- Temp password modal -->
       <div class="overlay" id="temppass-modal">
         <div class="modal">
           <div class="modal-title">✅ User created</div>
-          <div class="modal-sub">Share these credentials securely. The user should change their password on first login.</div>
+          <div class="modal-sub">Share these credentials securely. User should change password on first login.</div>
           <div style="background:#f8fafc;border-radius:var(--radius);padding:14px;font-size:13px;line-height:2">
             <div><strong>Email:</strong> <span id="tp-email"></span></div>
             <div><strong>Temp password:</strong> <code id="tp-pass" style="background:#e2e4e9;padding:2px 6px;border-radius:4px"></code></div>
@@ -417,12 +546,8 @@ select.form-input{cursor:pointer}
   </div><!-- /main -->
 </div><!-- /app-screen -->
 
-<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
-
 <script>
-// ══════════════════════════════════════════════════════════════════════════════
-// ██  CONFIGURATION — FILL THESE IN BEFORE DEPLOYING  ██
-// ══════════════════════════════════════════════════════════════════════════════
+// ══ CONFIGURATION ══════════════════════════════════════════════════════════
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyD-q5l48TytETa8xICkpVzX1_qL3-IXlNA",
   authDomain: "treasury-management-dc09a.firebaseapp.com",
@@ -431,247 +556,286 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "333441184724",
   appId: "1:333441184724:web:127304291c677cf4019c41"
 };
-
-// Google Apps Script Web App URL — after you deploy appsscript.js as a Web App
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz66weg9eZZWIzhYAbj1DA4cvdR8HkGthTBGemHMATSkhGzUwK6170Eo-XsU2zvjzmvaA/exec";
+const SHEET_CSV_URL   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRp7XPqpC21waDyB8izLh6yeXZrCzWpDo2E6Smgdr_UH__t3hPRM5TBfG7flJu79XMqDf8homHUW1O5/pub?output=csv";
+const ADMIN_EMAILS    = ["cahimanshugarg09@gmail.com"];
+// ══════════════════════════════════════════════════════════════════════════
 
-// Google Sheet published CSV URL — File → Share → Publish to web → CSV
-const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRp7XPqpC21waDyB8izLh6yeXZrCzWpDo2E6Smgdr_UH__t3hPRM5TBfG7flJu79XMqDf8homHUW1O5/pub?output=csv";
+// Live entity list — admin can add/rename at runtime (persisted in localStorage)
+let ENTITIES = JSON.parse(localStorage.getItem('bb_entities')||'null') ||
+  ['MAIA','MEIPL','MEOPL','MLS','MLSIPL','NHD','JGD','JVDPL','RDL','NHEPL','NHBPL','NHRPL','NPDLLP','PPEPL','NYPL','SGELLP','SGRPL'];
 
-// Admin email addresses — these users can edit locked submissions
-const ADMIN_EMAILS = ["cahimanshugarg09@gmail.com"];
+// Custom columns: [{key,label,type}]
+let CUSTOM_COLS = JSON.parse(localStorage.getItem('bb_custom_cols')||'[]');
 
-// ══════════════════════════════════════════════════════════════════════════════
+// ── STATE ──
+let currentUser=null, isAdmin=false;
+let sheetsData={};   // {date:{entity:{bank,sweep,fd,inv,brs,ana,reserve,...}}}
+let auditLog=[];
+let dashDate=todayStr();
+let barChartInst,doughnutInst,cmpChartInst;
 
-const ENTITIES = ['MAIA','MEIPL','MEOPL','MLS','MLSIPL','NHD','JGD','JVDPL','RDL','NHEPL','NHBPL','NHRPL','NPDLLP','PPEPL','NYPL','SGELLP','SGRPL'];
-
-const DEMO_DATA = {
-  MAIA:{bank:0.18,sweep:0,fd:13.75,inv:61.81,brs:0.55,ana:0.73,reserve:0},
-  MEIPL:{bank:2.33,sweep:0,fd:0,inv:0,brs:-0.04,ana:0,reserve:0},
-  MEOPL:{bank:0.09,sweep:0.08,fd:0,inv:7.86,brs:0,ana:0.17,reserve:7.86},
-  MLS:{bank:0.20,sweep:0,fd:0,inv:0,brs:-0.04,ana:0.16,reserve:0},
-  MLSIPL:{bank:2.98,sweep:4.10,fd:0,inv:0,brs:0,ana:7.09,reserve:0},
-  NHD:{bank:8.32,sweep:1.20,fd:0.25,inv:9.34,brs:-0.92,ana:8.60,reserve:1.05},
-  JGD:{bank:0.09,sweep:0,fd:0,inv:0,brs:0,ana:0.09,reserve:0},
-  JVDPL:{bank:0.85,sweep:7.01,fd:0,inv:11.45,brs:-0.17,ana:7.68,reserve:0},
-  RDL:{bank:0.01,sweep:0.41,fd:0,inv:17.04,brs:0,ana:0.42,reserve:0},
-  NHEPL:{bank:7.65,sweep:0.03,fd:0,inv:5.11,brs:-0.19,ana:7.49,reserve:0},
-  NHBPL:{bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0},
-  NHRPL:{bank:1.50,sweep:2.66,fd:0,inv:0,brs:-0.21,ana:3.95,reserve:0},
-  NPDLLP:{bank:0.01,sweep:0,fd:0,inv:0,brs:0,ana:0.01,reserve:0},
-  PPEPL:{bank:0.01,sweep:0,fd:0,inv:0,brs:0,ana:0.01,reserve:0},
-  NYPL:{bank:2.07,sweep:0,fd:0,inv:0,brs:-1.14,ana:0.93,reserve:0},
-  SGELLP:{bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0},
-  SGRPL:{bank:0.30,sweep:4.31,fd:0,inv:9.08,brs:0,ana:4.61,reserve:0},
-};
-
-// ── STATE ──────────────────────────────────────────────────────────────────────
-let currentUser = null;
-let isAdmin = false;
-let isDemoMode = false;
-let sheetsData = {};    // { date: { entity: {bank,sweep,...,submittedBy,submittedAt,locked} } }
-let auditLog = [];      // full audit trail from sheet
-let barChartInst, doughnutInst;
-
-// ── FIREBASE INIT ──────────────────────────────────────────────────────────────
+// ── FIREBASE INIT ──
 const isConfigured = FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY";
-
-if (isConfigured) {
+if(isConfigured){
   firebase.initializeApp(FIREBASE_CONFIG);
-  firebase.auth().onAuthStateChanged(user => {
-    if (user) {
-      currentUser = user;
-      isAdmin = ADMIN_EMAILS.includes(user.email.toLowerCase());
-      showApp();
-    } else {
-      showAuth();
-    }
+  firebase.auth().onAuthStateChanged(u=>{
+    if(u){currentUser=u;isAdmin=ADMIN_EMAILS.includes(u.email.toLowerCase());showApp();}
+    else showAuth();
   });
-} else {
-  // Demo mode — skip auth
-  isDemoMode = true;
-  document.getElementById('config-notice').style.display = 'block';
-  currentUser = {email:'demo@company.com', displayName:'Demo Admin'};
-  isAdmin = true;
-  showApp();
+}else{
+  currentUser={email:'demo@company.com',displayName:'Demo Admin'};
+  isAdmin=true;showApp();
 }
 
-// ── AUTH ──────────────────────────────────────────────────────────────────────
-function showAuth(){
-  document.getElementById('auth-screen').style.display='flex';
-  document.getElementById('app-screen').style.display='none';
-}
-function showApp(){
-  document.getElementById('auth-screen').style.display='none';
-  document.getElementById('app-screen').style.display='block';
-  initApp();
-}
+// ── AUTH ──
+function showAuth(){document.getElementById('auth-screen').style.display='flex';document.getElementById('app-screen').style.display='none';}
+function showApp(){document.getElementById('auth-screen').style.display='none';document.getElementById('app-screen').style.display='block';initApp();}
 
 async function doLogin(){
-  const email = document.getElementById('login-email').value.trim();
-  const pass  = document.getElementById('login-pass').value;
-  const btn   = document.getElementById('login-btn');
-  const err   = document.getElementById('auth-err');
-  err.style.display='none';
+  const email=document.getElementById('login-email').value.trim();
+  const pass=document.getElementById('login-pass').value;
+  const btn=document.getElementById('login-btn');
+  document.getElementById('auth-err').style.display='none';
   if(!email||!pass){showAuthErr('Please enter email and password.');return;}
-  btn.disabled=true; btn.textContent='Signing in…';
-  try{
-    await firebase.auth().signInWithEmailAndPassword(email,pass);
-  }catch(e){
-    showAuthErr(firebaseErrMsg(e.code));
-    btn.disabled=false; btn.textContent='Sign in';
-  }
+  btn.disabled=true;btn.textContent='Signing in…';
+  try{await firebase.auth().signInWithEmailAndPassword(email,pass);}
+  catch(e){showAuthErr(firebaseErrMsg(e.code));btn.disabled=false;btn.textContent='Sign in';}
 }
-
 async function doForgot(){
-  const email = document.getElementById('login-email').value.trim();
-  if(!email){showAuthErr('Enter your email address first.');return;}
+  const email=document.getElementById('login-email').value.trim();
+  if(!email){showAuthErr('Enter your email first.');return;}
   try{
     await firebase.auth().sendPasswordResetEmail(email);
-    const ok=document.getElementById('auth-ok');
-    ok.textContent='✓ Reset link sent — check your inbox.';
-    ok.style.display='block';
+    const ok=document.getElementById('auth-ok');ok.textContent='✓ Reset link sent — check your inbox.';ok.style.display='block';
   }catch(e){showAuthErr(firebaseErrMsg(e.code));}
 }
+async function doLogout(){if(isConfigured)await firebase.auth().signOut();else showAuth();}
+function showAuthErr(m){const el=document.getElementById('auth-err');el.textContent=m;el.style.display='block';}
+function firebaseErrMsg(c){return({'auth/user-not-found':'No account found.','auth/wrong-password':'Incorrect password.','auth/invalid-email':'Invalid email.','auth/too-many-requests':'Too many attempts. Try later.','auth/invalid-credential':'Incorrect email or password.'})[c]||'Sign-in failed.';}
 
-async function doLogout(){
-  if(isConfigured) await firebase.auth().signOut();
-  else showAuth();
-}
-
-function showAuthErr(msg){
-  const el=document.getElementById('auth-err');
-  el.textContent=msg; el.style.display='block';
-}
-
-function firebaseErrMsg(code){
-  const map={
-    'auth/user-not-found':'No account found with this email.',
-    'auth/wrong-password':'Incorrect password.',
-    'auth/invalid-email':'Invalid email address.',
-    'auth/too-many-requests':'Too many attempts. Try again later.',
-    'auth/invalid-credential':'Incorrect email or password.',
-  };
-  return map[code]||'Sign-in failed. Please try again.';
-}
-
-// ── APP INIT ──────────────────────────────────────────────────────────────────
+// ── APP INIT ──
 function initApp(){
-  const today = todayStr();
-  document.getElementById('today-badge').textContent = formatDate(today);
-  document.getElementById('table-date-label').textContent = formatDate(today);
-  document.getElementById('status-date-label').textContent = formatDate(today);
-  document.getElementById('entry-date').value = today;
-  document.getElementById('entry-date').max = today;
+  const today=todayStr();
+  dashDate=today;
+  document.getElementById('today-badge').textContent=formatDate(today);
+  document.getElementById('entry-date').value=today;
+  document.getElementById('entry-date').max=today;
+  document.getElementById('dash-date').value=today;
+  document.getElementById('dash-date').max=today;
+  document.getElementById('cmp-date1').value=today;
+  document.getElementById('cmp-date2').value=today;
+  document.getElementById('status-date-label').textContent=formatDate(today);
+  updateDashDateLabel();
 
-  // User chip
-  const name = currentUser.displayName || currentUser.email.split('@')[0];
-  const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-  document.getElementById('top-avatar').textContent = initials;
-  if(isAdmin) document.getElementById('top-avatar').classList.add('admin');
-  document.getElementById('top-name').textContent = name;
-  document.getElementById('top-role').textContent = isAdmin ? ' · Admin' : '';
+  const name=currentUser.displayName||currentUser.email.split('@')[0];
+  const initials=name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  document.getElementById('top-avatar').textContent=initials;
+  if(isAdmin)document.getElementById('top-avatar').classList.add('admin');
+  document.getElementById('top-name').textContent=name;
+  document.getElementById('top-role').textContent=isAdmin?' · Admin':'';
 
-  // Show admin-only tabs
   if(isAdmin){
     document.querySelectorAll('.admin-only').forEach(el=>el.style.display='');
-    populateAuditFilter();
-    loadUsers();
+    document.getElementById('audit-date-filter').value=today;
+    ENTITIES.forEach(e=>document.getElementById('audit-entity-filter').innerHTML+=`<option value="${e}">${e}</option>`);
   }
 
-  // Entity selects
-  const sel = document.getElementById('entry-entity');
-  ENTITIES.forEach(e=>sel.innerHTML+=`<option value="${e}">${e}</option>`);
-  const af = document.getElementById('audit-entity-filter');
-  ENTITIES.forEach(e=>af.innerHTML+=`<option value="${e}">${e}</option>`);
-
+  refreshEntitySelects();
+  renderCustomColChips();
+  renderCustomColFields();
+  buildMainTableHeader();
   doRefresh();
 }
 
-// ── DATA: FETCH FROM GOOGLE SHEET ─────────────────────────────────────────────
+// ── ENTITY MANAGEMENT ──
+function saveEntities(){localStorage.setItem('bb_entities',JSON.stringify(ENTITIES));}
+
+function refreshEntitySelects(){
+  const sel=document.getElementById('entry-entity');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">Select entity…</option>';
+  ENTITIES.forEach(e=>sel.innerHTML+=`<option value="${e}">${e}</option>`);
+  if(ENTITIES.includes(cur))sel.value=cur;
+
+  const rf=document.getElementById('rename-from');
+  if(rf){rf.innerHTML='<option value="">Select…</option>';ENTITIES.forEach(e=>rf.innerHTML+=`<option value="${e}">${e}</option>`);}
+
+  document.getElementById('entity-count').textContent=ENTITIES.length;
+  document.getElementById('entity-chips').innerHTML=ENTITIES.map(e=>`
+    <span class="entity-chip">
+      ${e}
+      <button class="rename-btn" onclick="quickRename('${e}')" title="Rename">✏️</button>
+      <button class="del-btn" onclick="removeEntity('${e}')" title="Remove">×</button>
+    </span>`).join('');
+}
+
+function addEntity(){
+  const code=document.getElementById('new-entity-code').value.trim().toUpperCase();
+  if(!code){showStatus('Enter an entity code.',true);return;}
+  if(ENTITIES.includes(code)){showStatus('Entity already exists.',true);return;}
+  ENTITIES.push(code);saveEntities();
+  document.getElementById('new-entity-code').value='';
+  document.getElementById('new-entity-name').value='';
+  refreshEntitySelects();buildMainTableHeader();renderAll();
+  showStatus('✓ Entity "'+code+'" added.',false);
+}
+
+function removeEntity(code){
+  if(!confirm('Remove entity "'+code+'" from the list? (Data in Google Sheet is not deleted.)'))return;
+  ENTITIES=ENTITIES.filter(e=>e!==code);saveEntities();
+  refreshEntitySelects();buildMainTableHeader();renderAll();
+  showStatus('✓ Entity "'+code+'" removed.',false);
+}
+
+function quickRename(old){
+  const newCode=prompt('Rename "'+old+'" to:','');
+  if(!newCode)return;
+  const nc=newCode.trim().toUpperCase();
+  if(!nc||ENTITIES.includes(nc)){showStatus('Invalid or duplicate name.',true);return;}
+  ENTITIES=ENTITIES.map(e=>e===old?nc:e);saveEntities();
+  // Migrate in-memory sheetsData
+  Object.values(sheetsData).forEach(d=>{if(d[old]){d[nc]=d[old];delete d[old];}});
+  refreshEntitySelects();buildMainTableHeader();renderAll();
+  showStatus('✓ Renamed "'+old+'" → "'+nc+'".',false);
+}
+
+function renameEntity(){
+  const from=document.getElementById('rename-from').value;
+  const to=document.getElementById('rename-to').value.trim().toUpperCase();
+  if(!from||!to){showStatus('Select entity and enter new code.',true);return;}
+  if(ENTITIES.includes(to)){showStatus('"'+to+'" already exists.',true);return;}
+  ENTITIES=ENTITIES.map(e=>e===from?to:e);saveEntities();
+  Object.values(sheetsData).forEach(d=>{if(d[from]){d[to]=d[from];delete d[from];}});
+  refreshEntitySelects();buildMainTableHeader();renderAll();
+  document.getElementById('rename-to').value='';
+  showStatus('✓ Renamed "'+from+'" → "'+to+'".',false);
+}
+
+// ── CUSTOM COLUMNS ──
+function saveCustomCols(){localStorage.setItem('bb_custom_cols',JSON.stringify(CUSTOM_COLS));}
+
+function addCustomCol(){
+  const name=document.getElementById('new-col-name').value.trim();
+  const type=document.getElementById('new-col-type').value;
+  if(!name){showStatus('Enter a column name.',true);return;}
+  const key='cc_'+name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  if(CUSTOM_COLS.find(c=>c.key===key)){showStatus('Column already exists.',true);return;}
+  CUSTOM_COLS.push({key,label:name,type});saveCustomCols();
+  document.getElementById('new-col-name').value='';
+  renderCustomColChips();renderCustomColFields();buildMainTableHeader();renderAll();
+  showStatus('✓ Column "'+name+'" added.',false);
+}
+
+function removeCustomCol(key){
+  CUSTOM_COLS=CUSTOM_COLS.filter(c=>c.key!==key);saveCustomCols();
+  renderCustomColChips();renderCustomColFields();buildMainTableHeader();renderAll();
+}
+
+function renderCustomColChips(){
+  const wrap=document.getElementById('custom-col-chips');
+  if(!wrap)return;
+  wrap.innerHTML=CUSTOM_COLS.length?
+    CUSTOM_COLS.map(c=>`<span class="col-chip">${c.label} <small style="opacity:.7">(${c.type})</small> <button class="del-btn" onclick="removeCustomCol('${c.key}')">×</button></span>`).join(''):
+    '<span style="font-size:13px;color:var(--hint)">No custom columns yet.</span>';
+}
+
+function renderCustomColFields(){
+  const wrap=document.getElementById('custom-col-fields');
+  if(!wrap)return;
+  wrap.innerHTML=CUSTOM_COLS.map(c=>`
+    <div class="form-group">
+      <label class="form-label">${c.label}</label>
+      <input ${c.type==='number'?'type="number" step="0.01"':'type="text"'} class="form-input" id="f-${c.key}" placeholder="${c.type==='number'?'0.00':''}">
+    </div>`).join('');
+}
+
+function buildMainTableHeader(){
+  const std=['Entity','Bank (a)','Sweep TD (b)','FD (c)','Investment (d)','BRS (e)','Liquid (f)','Liquid & MF (g)','Treasury (h)','Reserve (i)'];
+  const extra=CUSTOM_COLS.map(c=>`<th>${c.label}</th>`).join('');
+  document.getElementById('main-thead').innerHTML='<tr>'+std.map(h=>`<th>${h}</th>`).join('')+extra+'<th>Total (j)</th><th>Movement</th></tr>';
+}
+
+// ── DATE FILTER ──
+function onDashDateChange(){
+  dashDate=document.getElementById('dash-date').value||todayStr();
+  updateDashDateLabel();renderAll();
+}
+function setDashToday(){
+  dashDate=todayStr();
+  document.getElementById('dash-date').value=dashDate;
+  updateDashDateLabel();renderAll();
+}
+function shiftDashDate(dir){
+  const d=new Date(dashDate+'T00:00:00');
+  d.setDate(d.getDate()+dir);
+  const ns=d.toISOString().split('T')[0];
+  if(ns>todayStr())return;
+  dashDate=ns;
+  document.getElementById('dash-date').value=dashDate;
+  updateDashDateLabel();renderAll();
+}
+function updateDashDateLabel(){
+  document.getElementById('dash-date-label').textContent=formatDate(dashDate);
+  document.getElementById('table-date-label').textContent=formatDate(dashDate);
+  document.getElementById('status-date-label').textContent=formatDate(dashDate);
+}
+
+// ── FETCH ──
 async function doRefresh(){
   setSyncState('loading','⏳ Loading…');
   try{
-    if(SHEET_CSV_URL==='YOUR_SHEET_CSV_URL_HERE') throw new Error('not_configured');
-    fetch(SHEET_CSV_URL);
-    const resp = await fetch(SHEET_CSV_URL);
-
-if (!resp.ok) {
-  throw new Error('HTTP ' + resp.status);
-}
-
-const csv = await resp.text();
-parseSheetCSV(csv);
+    const resp=await fetch(SHEET_CSV_URL);
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    const csv=await resp.text();
+    parseSheetCSV(csv);
     setSyncState('ok','✅ Live · '+formatTime(new Date()));
     document.getElementById('data-src-label').textContent='Google Sheet · live';
     renderAll();
   }catch(e){
-    if(e.message==='not_configured'||isDemoMode){
-      // Use demo data
-      buildDemoSheetData();
-      setSyncState('ok','🔵 Demo data');
-      document.getElementById('data-src-label').textContent='Demo data';
-      renderAll();
-    }else{
-      setSyncState('err','❌ Sheet error');
-      showStatus('Could not load sheet: '+e.message,true);
-      buildDemoSheetData();
-      renderAll();
-    }
+    setSyncState('err','❌ Sheet error');
+    showStatus('Could not load sheet: '+e.message+'. Showing empty dashboard.',true);
+    sheetsData={};auditLog=[];
+    renderAll();
   }
 }
 
 function parseSheetCSV(csv){
-  /**
-   * Expected columns (case-insensitive):
-   * date, entity, bank, sweep, fd, inv, brs, ana, reserve,
-   * submitted_by, submitted_at, locked, remarks
-   * audit_action (optional: "SUBMIT"|"EDIT_ADMIN")
-   */
   const lines=csv.trim().split('\n').filter(l=>l.trim());
-  if(lines.length<2) throw new Error('Empty sheet');
+  if(lines.length<2){sheetsData={};auditLog=[];return;}
   const headers=lines[0].split(',').map(h=>h.replace(/"/g,'').trim().toLowerCase());
   const idx=h=>headers.indexOf(h);
-  sheetsData={};
-  auditLog=[];
+  sheetsData={};auditLog=[];
 
   for(let i=1;i<lines.length;i++){
     const cols=splitCSV(lines[i]);
-    if(cols.length<7) continue;
+    if(cols.length<7)continue;
     const date=(cols[idx('date')]||'').replace(/"/g,'').trim();
     const entity=(cols[idx('entity')]||'').replace(/"/g,'').trim().toUpperCase();
-    if(!date||!entity) continue;
+    if(!date||!entity)continue;
     const row={
-      bank:   +((cols[idx('bank')]||'0').replace(/"/g,'')),
-      sweep:  +((cols[idx('sweep')]||'0').replace(/"/g,'')),
-      fd:     +((cols[idx('fd')]||'0').replace(/"/g,'')),
-      inv:    +((cols[idx('inv')]||'0').replace(/"/g,'')),
-      brs:    +((cols[idx('brs')]||'0').replace(/"/g,'')),
-      ana:    +((cols[idx('ana')]||'0').replace(/"/g,'')),
-      reserve:+((cols[idx('reserve')]||'0').replace(/"/g,'')),
+      bank:   num(cols,idx,'bank'),
+      sweep:  num(cols,idx,'sweep'),
+      fd:     num(cols,idx,'fd'),
+      inv:    num(cols,idx,'inv'),
+      brs:    num(cols,idx,'brs'),
+      ana:    num(cols,idx,'ana'),
+      reserve:num(cols,idx,'reserve'),
       submittedBy:(cols[idx('submitted_by')]||'').replace(/"/g,'').trim(),
       submittedAt:(cols[idx('submitted_at')]||'').replace(/"/g,'').trim(),
-      locked: ((cols[idx('locked')]||'').replace(/"/g,'').trim().toLowerCase()==='true'||
-               (cols[idx('locked')]||'').replace(/"/g,'').trim()==='1'),
+      locked: ['true','1'].includes((cols[idx('locked')]||'').replace(/"/g,'').trim().toLowerCase()),
       remarks:(cols[idx('remarks')]||'').replace(/"/g,'').trim(),
       action: (cols[idx('audit_action')]||'SUBMIT').replace(/"/g,'').trim(),
     };
-    if(!sheetsData[date]) sheetsData[date]={};
+    // Parse custom cols
+    CUSTOM_COLS.forEach(c=>{row[c.key]=(cols[idx(c.key)]||'').replace(/"/g,'').trim();});
+    if(!sheetsData[date])sheetsData[date]={};
     sheetsData[date][entity]=row;
-    auditLog.push({date,entity,...row,i});
+    auditLog.push({date,entity,...row});
   }
   auditLog.sort((a,b)=>b.submittedAt.localeCompare(a.submittedAt));
 }
-
-function buildDemoSheetData(){
-  const today=todayStr();
-  sheetsData={};
-  sheetsData[today]={};
-  Object.entries(DEMO_DATA).forEach(([e,r])=>{
-    sheetsData[today][e]={...r,submittedBy:'demo@company.com',submittedAt:new Date().toISOString(),locked:true,remarks:'',action:'SUBMIT'};
-  });
-  auditLog=Object.entries(DEMO_DATA).map(([e,r])=>({date:today,entity:e,...r,submittedBy:'demo@company.com',submittedAt:new Date().toISOString(),locked:true,remarks:'',action:'SUBMIT'}));
-}
+function num(cols,idx,key){return +((cols[idx(key)]||'0').replace(/"/g,''))||0;}
 
 function splitCSV(line){
   const cols=[];let cur='',inQ=false;
@@ -679,18 +843,13 @@ function splitCSV(line){
   cols.push(cur);return cols;
 }
 
-// ── SUBMIT TO APPS SCRIPT ─────────────────────────────────────────────────────
+// ── SUBMIT ──
 async function submitEntry(){
   const entity=document.getElementById('entry-entity').value;
   const date=document.getElementById('entry-date').value;
   if(!entity){showStatus('Select an entity.',true);return;}
-
-  const today=todayStr();
-  // Lock check (non-admin)
   const existing=sheetsData[date]&&sheetsData[date][entity];
-  if(existing&&existing.locked&&!isAdmin){
-    showStatus('🔒 Already submitted. Only admin can edit locked entries.',true);return;
-  }
+  if(existing&&existing.locked&&!isAdmin){showStatus('🔒 Already submitted. Only admin can edit.',true);return;}
 
   const payload={
     date,entity,
@@ -707,29 +866,21 @@ async function submitEntry(){
     action: existing&&existing.locked&&isAdmin?'EDIT_ADMIN':'SUBMIT',
     locked: true,
   };
+  // Custom cols
+  CUSTOM_COLS.forEach(c=>{
+    const el=document.getElementById('f-'+c.key);
+    payload[c.key]=el?el.value:'';
+  });
 
-  if(isDemoMode||APPS_SCRIPT_URL==='YOUR_APPS_SCRIPT_URL_HERE'){
-    // Demo mode: simulate
-    if(!sheetsData[date]) sheetsData[date]={};
-    sheetsData[date][entity]=payload;
-    auditLog.unshift({...payload});
-    showStatus('✓ Submitted (demo mode — connect Apps Script for real writes)',false);
-    clearForm();renderAll();return;
-  }
-
-  // Real submit
   document.getElementById('submit-btn').style.display='none';
   document.getElementById('submit-spinner').style.display='flex';
   try{
     const resp=await fetch(APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
     const result=await resp.json();
     if(result.status==='ok'){
-      showStatus('✓ Data submitted successfully.',false);
-      clearForm();
-      await doRefresh();
-    }else{
-      throw new Error(result.message||'Unknown error');
-    }
+      showStatus('✓ Submitted successfully.',false);
+      clearForm();await doRefresh();
+    }else throw new Error(result.message||'Unknown error');
   }catch(e){
     showStatus('❌ Submit failed: '+e.message,true);
   }finally{
@@ -738,52 +889,37 @@ async function submitEntry(){
   }
 }
 
-// ── LOCK CHECK ON ENTITY CHANGE ───────────────────────────────────────────────
 function onEntityChange(){
   const entity=document.getElementById('entry-entity').value;
   const date=document.getElementById('entry-date').value;
   const existing=sheetsData[date]&&sheetsData[date][entity];
   const locked=existing&&existing.locked&&!isAdmin;
-  const lockNotice=document.getElementById('lock-notice');
-  const submitBtn=document.getElementById('submit-btn');
-
-  if(locked){
-    lockNotice.style.display='inline-flex';
-    submitBtn.disabled=true;
-    submitBtn.title='Only admin can edit locked submissions';
-    ['f-bank','f-sweep','f-fd','f-inv','f-brs','f-ana','f-reserve','f-remarks'].forEach(id=>{
-      document.getElementById(id).disabled=true;
-    });
-  }else{
-    lockNotice.style.display='none';
-    submitBtn.disabled=false;
-    submitBtn.title='';
-    ['f-bank','f-sweep','f-fd','f-inv','f-brs','f-ana','f-reserve','f-remarks'].forEach(id=>{
-      document.getElementById(id).disabled=false;
-    });
-    // Pre-fill if existing
-    if(existing){
-      setField('f-bank',existing.bank);setField('f-sweep',existing.sweep);
-      setField('f-fd',existing.fd);setField('f-inv',existing.inv);
-      setField('f-brs',existing.brs);setField('f-ana',existing.ana);
-      setField('f-reserve',existing.reserve);
-      document.getElementById('f-remarks').value=existing.remarks||'';
-      updatePreview();
-    }
+  document.getElementById('lock-notice').style.display=locked?'inline-flex':'none';
+  document.getElementById('submit-btn').disabled=locked;
+  const fields=['f-bank','f-sweep','f-fd','f-inv','f-brs','f-ana','f-reserve','f-remarks'];
+  CUSTOM_COLS.forEach(c=>fields.push('f-'+c.key));
+  fields.forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=locked;});
+  if(!locked&&existing){
+    setField('f-bank',existing.bank);setField('f-sweep',existing.sweep);
+    setField('f-fd',existing.fd);setField('f-inv',existing.inv);
+    setField('f-brs',existing.brs);setField('f-ana',existing.ana);
+    setField('f-reserve',existing.reserve);
+    document.getElementById('f-remarks').value=existing.remarks||'';
+    CUSTOM_COLS.forEach(c=>{const el=document.getElementById('f-'+c.key);if(el)el.value=existing[c.key]||'';});
+    updatePreview();
   }
 }
-function setField(id,val){document.getElementById(id).value=val||'';}
+function setField(id,val){const el=document.getElementById(id);if(el)el.value=val||'';}
 
-// ── RENDER ALL ────────────────────────────────────────────────────────────────
+// ── RENDER ALL ──
 function renderAll(){
-  const today=todayStr();
-  const data=sheetsData[today]||{};
+  const data=sheetsData[dashDate]||{};
   renderMetrics(data);
   renderTable(data);
   renderCharts(data);
-  renderEntryTable(data);
+  renderEntryTable(sheetsData[todayStr()]||{});
   renderStatusTab(data);
-  if(isAdmin){renderAudit();loadUsers();}
+  if(isAdmin)renderAudit();
 }
 
 function compute(r){
@@ -794,6 +930,11 @@ function compute(r){
 }
 
 function renderMetrics(data){
+  const hasData=Object.values(data).some(r=>compute(r).total!==0);
+  if(!hasData){
+    document.getElementById('metric-row').innerHTML='<div style="grid-column:span 5" class="empty-state"><div class="icon">📭</div><div class="msg">No data for '+formatDate(dashDate)+'</div><div class="sub">Select a different date or submit balance entries</div></div>';
+    return;
+  }
   let tb=0,tl=0,tt=0,ta=0;
   ENTITIES.forEach(e=>{
     const r=data[e]||{bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
@@ -805,53 +946,79 @@ function renderMetrics(data){
     {l:'Liquid funds',v:'₹ '+tl.toFixed(2)+' Cr',s:'Bank + Sweep + BRS'},
     {l:'Treasury',v:'₹ '+tt.toFixed(2)+' Cr',s:'FD + Investment'},
     {l:'Liquid & MF',v:'₹ '+ta.toFixed(2)+' Cr',s:'ANA funds'},
-    {l:'Entities',v:submitted+'/'+ENTITIES.length,s:'submitted today'},
+    {l:'Entities',v:submitted+'/'+ENTITIES.length,s:'submitted'},
   ];
   document.getElementById('metric-row').innerHTML=cards.map(c=>
-    `<div class="metric-card"><div class="metric-label">${c.l}</div><div class="metric-value">${c.v}</div><div class="metric-sub">${c.s}</div></div>`
-  ).join('');
+    `<div class="metric-card"><div class="metric-label">${c.l}</div><div class="metric-value">${c.v}</div><div class="metric-sub">${c.s}</div></div>`).join('');
 }
 
 function renderTable(data){
+  // Movement: compare to previous available date
+  const sortedDates=Object.keys(sheetsData).sort();
+  const prevDate=sortedDates[sortedDates.indexOf(dashDate)-1]||null;
+  const prevData=prevDate?sheetsData[prevDate]:{};
+
+  const hasData=Object.values(data).some(r=>compute(r).total!==0);
+  if(!hasData){
+    document.getElementById('main-tbody').innerHTML='<tr><td colspan="20" class="empty-state" style="border:none"><div class="icon">📭</div><div class="msg">No entries for '+formatDate(dashDate)+'</div></td></tr>';
+    return;
+  }
+
   let totals={bank:0,sweep:0,fd:0,inv:0,brs:0,liquid:0,ana:0,treasury:0,reserve:0,total:0};
+  const ccTotals={};CUSTOM_COLS.forEach(c=>{if(c.type==='number')ccTotals[c.key]=0;});
   let rows='';
   ENTITIES.forEach(e=>{
     const r=data[e]||{bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
+    const prev=prevData[e]||null;
     const c=compute(r);
-    const locked=r.locked;
     totals.bank+=r.bank;totals.sweep+=r.sweep;totals.fd+=r.fd;
     totals.inv+=r.inv;totals.brs+=r.brs;totals.liquid+=c.liquid;
     totals.ana+=r.ana;totals.treasury+=c.treasury;totals.reserve+=r.reserve;totals.total+=c.total;
-    const lockIcon=locked?'🔒 ':c.total===0?'':'';
+    const mov=prev?+(c.total-compute(prev).total).toFixed(2):null;
+    const movHtml=mov===null?'<span class="mv-zero">—</span>':mov>0?`<span class="mv-pos">▲ ${mov.toFixed(2)}</span>`:mov<0?`<span class="mv-neg">▼ ${Math.abs(mov).toFixed(2)}</span>`:'<span class="mv-zero">—</span>';
+    const ccCells=CUSTOM_COLS.map(col=>{
+      const v=r[col.key]||'';
+      if(col.type==='number'){const n=parseFloat(v)||0;ccTotals[col.key]=(ccTotals[col.key]||0)+n;return `<td>${n.toFixed(2)}</td>`;}
+      return `<td style="text-align:left">${v}</td>`;
+    }).join('');
     rows+=`<tr data-entity="${e}">
-      <td>${lockIcon}${e}</td>
+      <td>${r.locked?'🔒 ':''}<span title="${e}">${e}</span></td>
       <td>${r.bank.toFixed(2)}</td><td>${r.sweep.toFixed(2)}</td>
       <td>${r.fd.toFixed(2)}</td><td>${r.inv.toFixed(2)}</td>
       <td>${r.brs.toFixed(2)}</td><td>${c.liquid.toFixed(2)}</td>
       <td>${r.ana.toFixed(2)}</td><td>${c.treasury.toFixed(2)}</td>
-      <td>${r.reserve.toFixed(2)}</td><td><strong>${c.total.toFixed(2)}</strong></td>
-      <td class="mv-zero">—</td>
+      <td>${r.reserve.toFixed(2)}</td>${ccCells}
+      <td><strong>${c.total.toFixed(2)}</strong></td>
+      <td>${movHtml}</td>
     </tr>`;
   });
+  const ccTotal=CUSTOM_COLS.map(col=>col.type==='number'?`<td>${(ccTotals[col.key]||0).toFixed(2)}</td>`:'<td></td>').join('');
   rows+=`<tr class="total-row">
     <td>Total</td>
     <td>${totals.bank.toFixed(2)}</td><td>${totals.sweep.toFixed(2)}</td>
     <td>${totals.fd.toFixed(2)}</td><td>${totals.inv.toFixed(2)}</td>
     <td>${totals.brs.toFixed(2)}</td><td>${totals.liquid.toFixed(2)}</td>
     <td>${totals.ana.toFixed(2)}</td><td>${totals.treasury.toFixed(2)}</td>
-    <td>${totals.reserve.toFixed(2)}</td><td>${totals.total.toFixed(2)}</td><td>—</td>
+    <td>${totals.reserve.toFixed(2)}</td>${ccTotal}
+    <td>${totals.total.toFixed(2)}</td><td>—</td>
   </tr>`;
   document.getElementById('main-tbody').innerHTML=rows;
 }
 
 function renderCharts(data){
-  const labels=[],totals=[],liquids=[],treasuries=[],anas=[];
+  const labels=[],liquids=[],treasuries=[],anas=[];
   ENTITIES.forEach(e=>{
     const r=data[e]||{bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
     const c=compute(r);
-    if(c.total>0){labels.push(e);totals.push(c.total);liquids.push(c.liquid);treasuries.push(c.treasury);anas.push(r.ana);}
+    if(c.total>0){labels.push(e);liquids.push(c.liquid);treasuries.push(c.treasury);anas.push(r.ana);}
   });
   if(barChartInst)barChartInst.destroy();
+  if(labels.length===0){
+    document.getElementById('barChart').getContext('2d').clearRect(0,0,9999,9999);
+    document.getElementById('doughnut').getContext('2d').clearRect(0,0,9999,9999);
+    document.getElementById('donut-legend').innerHTML='<span style="color:var(--hint);font-size:12px">No data</span>';
+    return;
+  }
   barChartInst=new Chart(document.getElementById('barChart'),{
     type:'bar',data:{labels,datasets:[
       {label:'Liquid',data:liquids,backgroundColor:'#93c5fd',borderRadius:4},
@@ -859,14 +1026,12 @@ function renderCharts(data){
       {label:'Liquid & MF',data:anas,backgroundColor:'#1e40af',borderRadius:4},
     ]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-      scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:10}}},
-              y:{stacked:true,grid:{color:'#f1f5f9'},ticks:{font:{size:10}}}}}
+      scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:10}}},y:{stacked:true,grid:{color:'#f1f5f9'},ticks:{font:{size:10}}}}}
   });
   const sL=liquids.reduce((a,b)=>a+b,0),sT=treasuries.reduce((a,b)=>a+b,0),sA=anas.reduce((a,b)=>a+b,0);
   if(doughnutInst)doughnutInst.destroy();
   doughnutInst=new Chart(document.getElementById('doughnut'),{
-    type:'doughnut',
-    data:{labels:['Liquid','Treasury','Liquid & MF'],
+    type:'doughnut',data:{labels:['Liquid','Treasury','Liquid & MF'],
       datasets:[{data:[sL,sT,sA],backgroundColor:['#93c5fd','#2563eb','#1e40af'],borderWidth:0,hoverOffset:6}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'65%'}
   });
@@ -876,6 +1041,82 @@ function renderCharts(data){
   ].map(x=>`<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:${x.c}"></span>${x.l} ${tot>0?(x.v/tot*100).toFixed(1)+'%':''}</span>`).join('');
 }
 
+// ── DATE COMPARISON ──
+function renderComparison(){
+  const d1=document.getElementById('cmp-date1').value;
+  const d2=document.getElementById('cmp-date2').value;
+  if(!d1||!d2)return;
+  const data1=sheetsData[d1]||{};
+  const data2=sheetsData[d2]||{};
+
+  document.getElementById('cmp-subtitle').textContent=formatDate(d1)+' vs '+formatDate(d2);
+
+  // Bar chart: total per entity both dates
+  const labels=ENTITIES.filter(e=>{
+    const t1=compute(data1[e]||{bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0}).total;
+    const t2=compute(data2[e]||{bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0}).total;
+    return t1>0||t2>0;
+  });
+  const vals1=labels.map(e=>compute(data1[e]||{bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0}).total);
+  const vals2=labels.map(e=>compute(data2[e]||{bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0}).total);
+
+  if(cmpChartInst)cmpChartInst.destroy();
+  cmpChartInst=new Chart(document.getElementById('cmpChart'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:formatDate(d1),data:vals1,backgroundColor:'#93c5fd',borderRadius:4},
+      {label:formatDate(d2),data:vals2,backgroundColor:'#2563eb',borderRadius:4},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,position:'top'}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:'#f1f5f9'},ticks:{font:{size:10}}}}}
+  });
+  document.getElementById('cmp-chart-title').textContent='Total fund comparison · ₹ Crores · '+formatDate(d1)+' vs '+formatDate(d2);
+
+  // Table
+  document.getElementById('cmp-thead').innerHTML=`<tr>
+    <th>Entity</th>
+    <th class="cmp-d1">Liquid<br><small>${formatDate(d1)}</small></th>
+    <th class="cmp-d1">Treasury<br><small>${formatDate(d1)}</small></th>
+    <th class="cmp-d1">Total<br><small>${formatDate(d1)}</small></th>
+    <th class="cmp-d2">Liquid<br><small>${formatDate(d2)}</small></th>
+    <th class="cmp-d2">Treasury<br><small>${formatDate(d2)}</small></th>
+    <th class="cmp-d2">Total<br><small>${formatDate(d2)}</small></th>
+    <th class="cmp-diff">Δ Liquid</th>
+    <th class="cmp-diff">Δ Treasury</th>
+    <th class="cmp-diff">Δ Total</th>
+  </tr>`;
+
+  let tL1=0,tT1=0,tJ1=0,tL2=0,tT2=0,tJ2=0;
+  const rows=ENTITIES.map(e=>{
+    const r1=data1[e]||{bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
+    const r2=data2[e]||{bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0};
+    const c1=compute(r1),c2=compute(r2);
+    const dL=+(c2.liquid-c1.liquid).toFixed(2);
+    const dT=+(c2.treasury-c1.treasury).toFixed(2);
+    const dJ=+(c2.total-c1.total).toFixed(2);
+    tL1+=c1.liquid;tT1+=c1.treasury;tJ1+=c1.total;
+    tL2+=c2.liquid;tT2+=c2.treasury;tJ2+=c2.total;
+    const dc=v=>v>0?`<span class="cmp-pos">▲ ${v.toFixed(2)}</span>`:v<0?`<span class="cmp-neg">▼ ${Math.abs(v).toFixed(2)}</span>`:`<span class="cmp-zero">—</span>`;
+    return `<tr>
+      <td>${e}</td>
+      <td>${c1.liquid.toFixed(2)}</td><td>${c1.treasury.toFixed(2)}</td><td>${c1.total.toFixed(2)}</td>
+      <td>${c2.liquid.toFixed(2)}</td><td>${c2.treasury.toFixed(2)}</td><td>${c2.total.toFixed(2)}</td>
+      <td>${dc(dL)}</td><td>${dc(dT)}</td><td>${dc(dJ)}</td>
+    </tr>`;
+  }).join('');
+
+  const dc2=v=>v>0?`<span class="cmp-pos">▲ ${v.toFixed(2)}</span>`:v<0?`<span class="cmp-neg">▼ ${Math.abs(v).toFixed(2)}</span>`:`<span class="cmp-zero">—</span>`;
+  const totRow=`<tr class="total-row">
+    <td>Total</td>
+    <td>${tL1.toFixed(2)}</td><td>${tT1.toFixed(2)}</td><td>${tJ1.toFixed(2)}</td>
+    <td>${tL2.toFixed(2)}</td><td>${tT2.toFixed(2)}</td><td>${tJ2.toFixed(2)}</td>
+    <td>${dc2(+(tL2-tL1).toFixed(2))}</td><td>${dc2(+(tT2-tT1).toFixed(2))}</td><td>${dc2(+(tJ2-tJ1).toFixed(2))}</td>
+  </tr>`;
+  document.getElementById('cmp-tbody').innerHTML=rows+totRow;
+}
+
+// ── ENTRY TABLE & STATUS ──
 function renderEntryTable(data){
   const today=todayStr();
   const rows=ENTITIES.filter(e=>data[e]&&compute(data[e]).total!==0).map(e=>{
@@ -886,21 +1127,19 @@ function renderEntryTable(data){
       <td>${r.bank.toFixed(2)}</td><td>${r.sweep.toFixed(2)}</td><td>${r.fd.toFixed(2)}</td>
       <td>${r.inv.toFixed(2)}</td><td>${r.brs.toFixed(2)}</td><td>${r.ana.toFixed(2)}</td>
       <td>${r.reserve.toFixed(2)}</td><td><strong>${c.total.toFixed(2)}</strong></td>
-      <td class="audit-who">${r.submittedBy||'—'}</td>
+      <td class="audit-who" style="font-size:11px">${r.submittedBy||'—'}</td>
       <td class="audit-time">${r.submittedAt?formatTime2(r.submittedAt):'—'}</td>
-      <td>${r.locked?`<span class="badge badge-green">🔒 Locked</span>`:
-            `<span class="badge badge-amber">Draft</span>`}
+      <td>${r.locked?`<span class="badge badge-green">🔒 Locked</span>`:`<span class="badge badge-amber">Draft</span>`}
         ${canEdit&&r.locked?`<button class="btn btn-ghost" style="padding:3px 8px;font-size:11px;margin-left:4px" onclick="prefillEdit('${e}','${today}')">Edit</button>`:''}
       </td>
     </tr>`;
   });
   document.getElementById('entry-tbody').innerHTML=rows.join('')||'<tr><td colspan="12" style="color:var(--hint);padding:20px;text-align:center">No submissions yet today</td></tr>';
-  const count=rows.length;
-  document.getElementById('entry-count-label').textContent=count+' of '+ENTITIES.length+' entities submitted';
+  document.getElementById('entry-count-label').textContent=rows.length+' of '+ENTITIES.length+' entities submitted today';
 }
 
 function prefillEdit(entity,date){
-  switchTab('entry',document.querySelectorAll('.tab')[1]);
+  switchTab('entry',document.querySelectorAll('.tab')[2]);
   document.getElementById('entry-entity').value=entity;
   document.getElementById('entry-date').value=date;
   onEntityChange();
@@ -910,11 +1149,8 @@ function prefillEdit(entity,date){
 function renderStatusTab(data){
   document.getElementById('sub-grid').innerHTML=ENTITIES.map(e=>{
     const r=data[e];const done=r&&compute(r).total!==0;
-    return `<div class="sub-card">
-      <div class="sub-entity">${e}</div>
-      <div class="sub-info"><span class="status-dot ${done?'dot-green':'dot-amber'}"></span>
-        ${done?(r.submittedBy||'Submitted'):'Pending'}
-      </div>
+    return `<div class="sub-card"><div class="sub-entity">${e}</div>
+      <div class="sub-info"><span class="status-dot ${done?'dot-green':'dot-amber'}"></span>${done?(r.submittedBy||'Submitted'):'Pending'}</div>
       ${done&&r.submittedAt?`<div class="sub-info" style="margin-top:2px">${formatTime2(r.submittedAt)}</div>`:''}
     </div>`;
   }).join('');
@@ -941,7 +1177,6 @@ function renderAudit(){
     if(dfil&&r.date!==dfil)return false;
     return true;
   });
-  const c=r=>compute(r);
   document.getElementById('audit-tbody').innerHTML=rows.map(r=>`<tr class="audit-row">
     <td class="audit-time">${r.submittedAt?formatTime2(r.submittedAt):'—'}</td>
     <td>${r.entity}</td><td>${r.date}</td>
@@ -951,59 +1186,39 @@ function renderAudit(){
     <td>${(r.fd||0).toFixed(2)}</td><td>${(r.inv||0).toFixed(2)}</td>
     <td>${(r.brs||0).toFixed(2)}</td><td>${(r.ana||0).toFixed(2)}</td>
     <td>${(r.reserve||0).toFixed(2)}</td>
-    <td><strong>${c(r).total.toFixed(2)}</strong></td>
+    <td><strong>${compute(r).total.toFixed(2)}</strong></td>
     <td style="color:var(--muted);font-size:12px">${r.remarks||''}</td>
-  </tr>`).join('')||'<tr><td colspan="14" style="color:var(--hint);text-align:center;padding:20px">No audit records</td></tr>';
+  </tr>`).join('')||'<tr><td colspan="14" style="color:var(--hint);text-align:center;padding:20px">No audit records for selected filters</td></tr>';
 }
 
-function populateAuditFilter(){
-  // date filter default = today
-  document.getElementById('audit-date-filter').value=todayStr();
-}
-
-// ── USER MANAGEMENT (admin) ───────────────────────────────────────────────────
-let usersCache=[];
-
+// ── USER MANAGEMENT ──
 async function loadUsers(){
-  if(!isAdmin||!isConfigured)return;
-  // In a real setup you'd have a Firestore users collection.
-  // For now, show a placeholder row since Firebase Admin SDK can't run in browser.
-  document.getElementById('users-tbody').innerHTML=`
-    <tr><td colspan="5" style="color:var(--muted);text-align:center;padding:16px">
-      User listing requires a backend function. Create users below and manage them in <a href="https://console.firebase.google.com" target="_blank" style="color:var(--blue)">Firebase Console → Authentication</a>.
-    </td></tr>`;
+  document.getElementById('users-tbody').innerHTML=`<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:16px">
+    Manage users in <a href="https://console.firebase.google.com" target="_blank" style="color:var(--blue)">Firebase Console → Authentication</a>. Create new users below.
+  </td></tr>`;
 }
 
 async function createUser(){
-  if(!isConfigured){showStatus('Firebase not configured — cannot create real users.',true);return;}
+  if(!isConfigured){showStatus('Firebase not configured.',true);return;}
   const email=document.getElementById('new-email').value.trim();
   const name=document.getElementById('new-name').value.trim();
   const role=document.getElementById('new-role').value;
   if(!email||!name){showStatus('Email and name required.',true);return;}
-
-  // Generate temp password
   const tempPass=Math.random().toString(36).slice(-8)+'A1!';
-
   try{
     const cred=await firebase.auth().createUserWithEmailAndPassword(email,tempPass);
     await cred.user.updateProfile({displayName:name});
-    // Show temp credentials
     document.getElementById('tp-email').textContent=email;
     document.getElementById('tp-pass').textContent=tempPass;
     document.getElementById('tp-role').textContent=role;
     document.getElementById('temppass-modal').classList.add('open');
-    document.getElementById('new-email').value='';
-    document.getElementById('new-name').value='';
-    showStatus('✓ User created: '+email,false);
-    // If admin role, you'd save to Firestore here: db.collection('users').doc(cred.user.uid).set({role})
-    // For now, add admin emails to ADMIN_EMAILS array in config
-    if(role==='admin') showStatus('✓ Created. Add "'+email+'" to ADMIN_EMAILS in the config to grant admin access.',false);
-  }catch(e){
-    showStatus('❌ '+firebaseErrMsg(e.code),true);
-  }
+    document.getElementById('new-email').value='';document.getElementById('new-name').value='';
+    if(role==='admin')showStatus('✓ Created. Add "'+email+'" to ADMIN_EMAILS in config for admin access.',false);
+    else showStatus('✓ User created: '+email,false);
+  }catch(e){showStatus('❌ '+firebaseErrMsg(e.code),true);}
 }
 
-// ── UI HELPERS ────────────────────────────────────────────────────────────────
+// ── UI ──
 function filterTable(q){
   document.querySelectorAll('#main-tbody tr').forEach(tr=>{
     const e=tr.getAttribute('data-entity')||'';
@@ -1012,15 +1227,15 @@ function filterTable(q){
 }
 
 function switchTab(tab,el){
-  ['dashboard','entry','status','audit','users'].forEach(t=>{
-    const el2=document.getElementById('tab-'+t);
-    if(el2)el2.style.display='none';
+  ['dashboard','compare','entry','status','audit','entities','users'].forEach(t=>{
+    const el2=document.getElementById('tab-'+t);if(el2)el2.style.display='none';
   });
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  const target=document.getElementById('tab-'+tab);
-  if(target)target.style.display='block';
+  const target=document.getElementById('tab-'+tab);if(target)target.style.display='block';
   if(el)el.classList.add('active');
   if(tab==='audit')renderAudit();
+  if(tab==='compare')renderComparison();
+  if(tab==='entities'){refreshEntitySelects();renderCustomColChips();}
 }
 
 function updatePreview(){
@@ -1033,6 +1248,7 @@ function updatePreview(){
 function clearForm(){
   ['f-bank','f-sweep','f-fd','f-inv','f-brs','f-ana','f-reserve'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-remarks').value='';
+  CUSTOM_COLS.forEach(c=>{const el=document.getElementById('f-'+c.key);if(el)el.value='';});
   document.getElementById('preview-box').textContent='Total: — · Liquid: — · Treasury: —';
   document.getElementById('lock-notice').style.display='none';
   document.getElementById('submit-btn').disabled=false;
@@ -1044,7 +1260,6 @@ function showStatus(msg,isErr){
   el.className='status-bar show '+(isErr?'status-err':'status-ok');
   setTimeout(()=>el.classList.remove('show'),6000);
 }
-
 function setSyncState(state,text){
   const el=document.getElementById('sync-chip');
   el.textContent=text;
@@ -1052,29 +1267,25 @@ function setSyncState(state,text){
 }
 
 function exportExcel(){
-  const today=todayStr();
-  const data=sheetsData[today]||{};
-  const rows=[['Entity','Bank (a)','Sweep TD (b)','FD (c)','Investment (d)','BRS (e)','Liquid (f)','Liquid & MF (g)','Treasury (h)','Reserve (i)','Total (j)','Submitted by','Submitted at']];
+  const data=sheetsData[dashDate]||{};
+  const rows=[['Entity','Bank (a)','Sweep TD (b)','FD (c)','Investment (d)','BRS (e)','Liquid (f)','Liquid & MF (g)','Treasury (h)','Reserve (i)',...CUSTOM_COLS.map(c=>c.label),'Total (j)','Submitted by','Submitted at']];
   ENTITIES.forEach(e=>{
     const r=data[e]||{bank:0,sweep:0,fd:0,inv:0,brs:0,ana:0,reserve:0,submittedBy:'',submittedAt:''};
     const c=compute(r);
-    rows.push([e,r.bank,r.sweep,r.fd,r.inv,r.brs,c.liquid,r.ana,c.treasury,r.reserve,c.total,r.submittedBy,r.submittedAt]);
+    rows.push([e,r.bank,r.sweep,r.fd,r.inv,r.brs,c.liquid,r.ana,c.treasury,r.reserve,...CUSTOM_COLS.map(col=>r[col.key]||''),c.total,r.submittedBy,r.submittedAt]);
   });
   const ws=XLSX.utils.aoa_to_sheet(rows);
   const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'Balance_'+today);
-  XLSX.writeFile(wb,'BankBalance_'+today+'.xlsx');
+  XLSX.utils.book_append_sheet(wb,ws,'Balance_'+dashDate);
+  XLSX.writeFile(wb,'BankBalance_'+dashDate+'.xlsx');
   showStatus('✓ Excel downloaded',false);
 }
 
-// ── DATE UTILS ────────────────────────────────────────────────────────────────
+// ── UTILS ──
 function todayStr(){return new Date().toISOString().split('T')[0];}
-function formatDate(d){return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
+function formatDate(d){try{return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}catch{return d;}}
 function formatTime(d){return d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});}
-function formatTime2(iso){
-  try{const d=new Date(iso);return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});}
-  catch{return iso;}
-}
+function formatTime2(iso){try{const d=new Date(iso);return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});}catch{return iso;}}
 </script>
 </body>
 </html>
