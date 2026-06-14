@@ -549,6 +549,7 @@ th.cmp-diff{background:#fff9db;color:var(--amber)}
         <div style="overflow-x:auto">
           <table>
             <thead><tr><th>Entity</th><th>Bank</th><th>Sweep</th><th>FD</th><th>MF</th><th>Bonds</th><th>BRS</th><th>Total</th><th>Reserve</th><th>Restricted</th><th>Locked</th><th>Available</th><th>By</th><th>Time</th><th>Status</th></tr></thead>
+            <!-- Column order: Entity | Bank Balance → BRS | Total | Reserve | Restricted | Locked | Available -->
             <tbody id="entry-tbody"></tbody>
           </table>
         </div>
@@ -584,6 +585,7 @@ th.cmp-diff{background:#fff9db;color:var(--amber)}
         </div>
         <div style="overflow-x:auto">
           <table><thead><tr><th>Time</th><th>Entity</th><th>Date</th><th>Action</th><th>By</th><th>Bank</th><th>Sweep</th><th>FD</th><th>MF</th><th>Bonds</th><th>BRS</th><th>Total</th><th>Reserve</th><th>Restricted</th><th>Locked</th><th>Available</th><th>Remarks</th></tr></thead>
+          <!-- Column order: Bank→BRS | Total | Reserve | Restricted | Locked | Available -->
           <tbody id="audit-tbody"></tbody></table>
         </div>
       </div>
@@ -775,7 +777,7 @@ const ADMIN_EMAILS=["cahimanshugarg09@gmail.com"];
 // ══ NEW COLUMN SCHEMA ═════════════════════════════════════════════════
 // These are the fixed columns. "Total" and "Available" are computed.
 // Sheet headers must match: date, entity, bank, sweep, fd, mf, bonds, brs, reserve, restricted, locked_funds, submitted_by, submitted_at, locked, remarks, audit_action
-// Total = bank + sweep + fd + mf + bonds + brs + reserve + restricted + locked_funds
+// Total = bank + sweep + fd + mf + bonds + brs
 // Available = Total - reserve - restricted - locked_funds
 const COL_FIELDS=[
   {id:'bank',   label:'Bank Balance',       col:'bank'},
@@ -942,7 +944,7 @@ function compute(r){
   if(!r)return{total:0,available:0,investments:0,liquid:0};
   const b=r.bank||0,s=r.sweep||0,fd=r.fd||0,mf=r.mf||0,bo=r.bonds||0,brs=r.brs||0;
   const res=r.reserve||0,rest=r.restricted||0,lf=r.locked_funds||0;
-  const total=+(b+s+fd+mf+bo+brs+res+rest+lf).toFixed(2);
+  const total=+(b+s+fd+mf+bo+brs).toFixed(2);
   const investments=+(fd+mf+bo).toFixed(2);
   const liquid=+(b+s+brs).toFixed(2);
   const available=+(total-res-rest-lf).toFixed(2);
@@ -1092,13 +1094,13 @@ function renderCustomColFields(){
 
 // ── TABLE HEADER ──────────────────────────────────────────────────────
 function buildTableHeader(){
-  const cols=['Entity','Bank Balance','Sweep Deposit','Fixed Deposits','Mutual Funds','Bonds/Deb','BRS','Reserve Fund','Restricted','Locked Funds'];
+  const cols=['Entity','Bank Balance','Sweep Deposit','Fixed Deposits','Mutual Funds','Bonds/Deb','BRS','Total'];
   const ccols=CUSTOM_COLS.map(c=>c.label);
-  const tail=['Total','Available Funds','vs Prev Day'];
+  const tail=['Reserve Fund','Restricted Fund','Locked Funds','Available Funds','vs Prev Day'];
   document.getElementById('main-thead').innerHTML='<tr>'+
     cols.map(h=>`<th>${h}</th>`).join('')+
     ccols.map(h=>`<th>${h}</th>`).join('')+
-    tail.map((h,i)=>`<th${i===2?' class="col-prevday"':''}>${h}</th>`).join('')+
+    tail.map((h,i)=>`<th${i===4?' class="col-prevday"':''}>${h}</th>`).join('')+
   '</tr>';
 }
 
@@ -1168,16 +1170,18 @@ function renderTable(data){
       <td>${r.locked?'🔒 ':''}${e}</td>
       <td>${(r.bank||0).toFixed(2)}</td><td>${(r.sweep||0).toFixed(2)}</td><td>${(r.fd||0).toFixed(2)}</td>
       <td>${(r.mf||0).toFixed(2)}</td><td>${(r.bonds||0).toFixed(2)}</td><td>${(r.brs||0).toFixed(2)}</td>
-      <td>${(r.reserve||0).toFixed(2)}</td><td>${(r.restricted||0).toFixed(2)}</td><td>${(r.locked_funds||0).toFixed(2)}</td>
-      ${cc2}<td><strong>${c.total.toFixed(2)}</strong></td><td style="color:var(--green);font-weight:700">${c.available.toFixed(2)}</td>
+      <td><strong>${c.total.toFixed(2)}</strong></td>
+      ${cc2}<td>${(r.reserve||0).toFixed(2)}</td><td>${(r.restricted||0).toFixed(2)}</td><td>${(r.locked_funds||0).toFixed(2)}</td>
+      <td style="color:var(--green);font-weight:700">${c.available.toFixed(2)}</td>
       <td>${movHtml}</td></tr>`;
   });
   const ccTR=CUSTOM_COLS.map(c=>c.type==='number'?`<td>${(ccTot[c.key]||0).toFixed(2)}</td>`:'<td></td>').join('');
   rows+=`<tr class="total-row"><td>Total</td>
     <td>${tot.bank.toFixed(2)}</td><td>${tot.sweep.toFixed(2)}</td><td>${tot.fd.toFixed(2)}</td>
     <td>${tot.mf.toFixed(2)}</td><td>${tot.bonds.toFixed(2)}</td><td>${tot.brs.toFixed(2)}</td>
-    <td>${tot.reserve.toFixed(2)}</td><td>${tot.restricted.toFixed(2)}</td><td>${tot.locked_funds.toFixed(2)}</td>
-    ${ccTR}<td>${tot.total.toFixed(2)}</td><td>${tot.available.toFixed(2)}</td><td>—</td></tr>`;
+    <td>${tot.total.toFixed(2)}</td>
+    ${ccTR}<td>${tot.reserve.toFixed(2)}</td><td>${tot.restricted.toFixed(2)}</td><td>${tot.locked_funds.toFixed(2)}</td>
+    <td>${tot.available.toFixed(2)}</td><td>—</td></tr>`;
   $('main-tbody').innerHTML=rows;
 }
 
@@ -1359,9 +1363,9 @@ function showStatus(msg,isErr){const el=$('status-bar');el.textContent=msg;el.cl
 function setSyncState(state,text){const el=$('sync-chip');el.textContent=text;el.className='sync-chip '+(state==='ok'?'sync-ok':state==='err'?'sync-err':'sync-loading');}
 function exportExcel(){
   const data=sheetsData[dashDate]||{};
-  const hdr=['Entity','Bank Balance','Sweep Deposit','Fixed Deposits','Mutual Funds','Bonds/Deb','BRS','Reserve Fund','Restricted Fund','Locked Funds',...CUSTOM_COLS.map(c=>c.label),'Total','Available Funds','Submitted by','Submitted at'];
+  const hdr=['Entity','Bank Balance','Sweep Deposit','Fixed Deposits','Mutual Funds','Bonds/Deb','BRS','Total',...CUSTOM_COLS.map(c=>c.label),'Reserve Fund','Restricted Fund','Locked Funds','Available Funds','Submitted by','Submitted at'];
   const rows=[hdr];
-  ENTITIES.forEach(e=>{const r=data[e]||{};const c=compute(r);rows.push([e,r.bank||0,r.sweep||0,r.fd||0,r.mf||0,r.bonds||0,r.brs||0,r.reserve||0,r.restricted||0,r.locked_funds||0,...CUSTOM_COLS.map(col=>r[col.key]||''),c.total,c.available,r.submittedBy||'',r.submittedAt||'']);});
+  ENTITIES.forEach(e=>{const r=data[e]||{};const c=compute(r);rows.push([e,r.bank||0,r.sweep||0,r.fd||0,r.mf||0,r.bonds||0,r.brs||0,c.total,...CUSTOM_COLS.map(col=>r[col.key]||''),r.reserve||0,r.restricted||0,r.locked_funds||0,c.available,r.submittedBy||'',r.submittedAt||'']);});
   const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Balance_'+dashDate);
   XLSX.writeFile(wb,'BankBalance_'+dashDate+'.xlsx');showStatus('✓ Excel downloaded',false);
 }
