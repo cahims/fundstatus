@@ -799,9 +799,10 @@ const COL_FIELDS=[
 // These are all columns the sheet must have. On first load & before submit,
 // we call Apps Script to auto-add any missing ones.
 const REQUIRED_COLUMNS=[
-  'date','entity','bank','sweep','fd','mf','bonds','brs',
-  'reserve','restricted','locked_funds',
-  'submitted_by','submitted_by_name','submitted_at','locked','remarks','audit_action'
+  'Date','Entity','Bank Balance','Sweep Deposit','Fixed Deposits',
+  'Mutual Funds','Bonds/Deb','BRS','Reserve Fund','Restricted Fund',
+  'Locked Funds','Remarks','Submitted By','Submitted By Name',
+  'Submitted At','Locked','Audit Action'
 ];
 let columnsEnsured=false;
 
@@ -954,8 +955,6 @@ function parseSheetCSV(csv){
   window._csvLine1=lines.length>1?lines[1]:'';
   console.log('=== CSV HEADER ROW ===');
   console.log(lines[0]);
-  console.log('=== CSV FIRST DATA ROW ===');
-  console.log(lines[1]||'(none)');
   const rawHdr=lines[0].split(',').map(h=>h.replace(/"/g,'').trim());
   const hdr=rawHdr.map(h=>h.toLowerCase());
 
@@ -963,25 +962,28 @@ function parseSheetCSV(csv){
   window._csvRawHeaders=rawHdr;
   window._csvRowCount=lines.length-1;
 
-  // Flexible column index resolver — tries multiple aliases
+  // Exact column aliases matching: Date, Entity, Bank Balance, Sweep Deposit,
+  // Fixed Deposits, Mutual Funds, Bonds/Deb, BRS, Reserve Fund,
+  // Restricted Fund, Locked Funds, Remarks, Submitted By, Submitted By Name,
+  // Submitted At, Locked, Audit Action
   const aliases={
-    bank:['bank','bank_balance','bank balance','bank bal'],
-    sweep:['sweep','sweep_deposit','sweep deposit','sweep td','sweep_td'],
-    fd:['fd','fixed_deposit','fixed deposit','fixed deposits','fixed_deposits','f.d.','f.d'],
-    mf:['mf','mutual_fund','mutual_funds','mutual fund','mutual funds','m.f.','m.f'],
-    bonds:['bonds','bond','bonds_debentures','bonds/deb','debentures','bonds_deb','bond/deb','bonds debentures'],
-    brs:['brs','brs_balance','bank_reconciliation','brs balance'],
-    reserve:['reserve','reserve_fund','reserve fund','rsv'],
-    restricted:['restricted','restricted_funds','restricted funds','restricted fund'],
-    locked_funds:['locked_funds','locked funds','locked fund','locked','lock'],
-    submitted_by:['submitted_by','submittedby','submitted by','email'],
-    submitted_by_name:['submitted_by_name','submittedbyname','submitted by name','name','user'],
-    submitted_at:['submitted_at','submittedat','submitted at','timestamp','time'],
-    locked:['locked','is_locked'],
-    remarks:['remarks','notes','comment','comments','remark'],
-    audit_action:['audit_action','action','audit action'],
-    date:['date','dt'],
-    entity:['entity','company','co','org'],
+    date:        ['date','dt'],
+    entity:      ['entity','company'],
+    bank:        ['bank balance','bank_balance','bank'],
+    sweep:       ['sweep deposit','sweep_deposit','sweep'],
+    fd:          ['fixed deposits','fixed_deposits','fixed deposit','fd'],
+    mf:          ['mutual funds','mutual_funds','mutual fund','mf'],
+    bonds:       ['bonds/deb','bonds_deb','bonds debentures','bonds/debentures','bonds','bond'],
+    brs:         ['brs'],
+    reserve:     ['reserve fund','reserve_fund','reserve'],
+    restricted:  ['restricted fund','restricted_fund','restricted'],
+    locked_funds:['locked funds','locked_funds','locked fund'],
+    submitted_by:     ['submitted by','submitted_by','submittedby'],
+    submitted_by_name:['submitted by name','submitted_by_name','submittedbyname'],
+    submitted_at:     ['submitted at','submitted_at','submittedat'],
+    locked:      ['locked','is_locked'],
+    remarks:     ['remarks','remark','notes'],
+    audit_action:['audit action','audit_action','action'],
   };
   const idx=k=>{
     const list=aliases[k]||[k];
@@ -1000,12 +1002,12 @@ function parseSheetCSV(csv){
     const date=cl(cols,idx,'date'),entity=cl(cols,idx,'entity').toUpperCase();
     if(!date||!entity)continue;
     const row={
-      bank:n(cols,idx,'bank'),sweep:n(cols,idx,'sweep'),fd:n(cols,idx,'fd'),
-      mf:n(cols,idx,'mf'),bonds:n(cols,idx,'bonds'),brs:n(cols,idx,'brs'),
-      reserve:n(cols,idx,'reserve'),restricted:n(cols,idx,'restricted'),
+      bank:n(cols,idx,'bank'), sweep:n(cols,idx,'sweep'), fd:n(cols,idx,'fd'),
+      mf:n(cols,idx,'mf'), bonds:n(cols,idx,'bonds'), brs:n(cols,idx,'brs'),
+      reserve:n(cols,idx,'reserve'), restricted:n(cols,idx,'restricted'),
       locked_funds:n(cols,idx,'locked_funds'),
       submittedBy:cl(cols,idx,'submitted_by'),
-      submittedByName:cl(cols,idx,'submitted_by_name'),
+      submittedByName:cl(cols,idx,'submitted_by_name')||cl(cols,idx,'submitted_by'),
       submittedAt:cl(cols,idx,'submitted_at'),
       locked:['true','1'].includes(cl(cols,idx,'locked').toLowerCase()),
       remarks:cl(cols,idx,'remarks'),
@@ -1653,7 +1655,16 @@ async function submitExcelBatch(){
   let done=0,failed=0;
   for(const r of submittable){
     const existing=sheetsData[r.date]&&sheetsData[r.date][r.entity];
-    const payload={...r,submittedBy:currentUser.email,submittedByName:dname,submittedAt:new Date().toISOString(),action:existing&&existing.locked&&isAdmin?'EDIT_ADMIN':'SUBMIT',locked:true};
+    const payload={
+      date:r.date, entity:r.entity,
+      bank:r.bank, sweep:r.sweep, fd:r.fd,
+      mf:r.mf, bonds:r.bonds, brs:r.brs,
+      reserve:r.reserve, restricted:r.restricted, locked_funds:r.locked_funds,
+      remarks:r.remarks||'',
+      submittedBy:currentUser.email, submittedByName:dname,
+      submittedAt:new Date().toISOString(),
+      action:existing&&existing.locked&&isAdmin?'EDIT_ADMIN':'SUBMIT', locked:true
+    };
     try{
       const resp=await fetch(APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
       const res=await resp.json();
