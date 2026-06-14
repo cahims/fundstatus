@@ -794,7 +794,41 @@ const COL_FIELDS=[
   {id:'restricted',label:'Restricted Fund', col:'restricted'},
   {id:'locked_funds',label:'Locked Funds',  col:'locked_funds'},
 ];
-// ══ CHART COLOURS ════════════════════════════════════════════════════
+// ══ REQUIRED SHEET COLUMNS ═══════════════════════════════════════════
+// These are all columns the sheet must have. On first load & before submit,
+// we call Apps Script to auto-add any missing ones.
+const REQUIRED_COLUMNS=[
+  'date','entity','bank','sweep','fd','mf','bonds','brs',
+  'reserve','restricted','locked_funds',
+  'submitted_by','submitted_by_name','submitted_at','locked','remarks','audit_action'
+];
+let columnsEnsured=false;
+
+async function ensureSheetColumns(){
+  if(columnsEnsured)return true;
+  try{
+    const r=await fetch(APPS_SCRIPT_URL,{
+      method:'POST',
+      body:JSON.stringify({action:'ENSURE_COLUMNS',columns:REQUIRED_COLUMNS,submittedBy:currentUser?.email||''})
+    });
+    const res=await r.json();
+    if(res.status==='ok'||res.status==='noop'){
+      columnsEnsured=true;
+      if(res.added&&res.added.length){
+        showStatus('✓ Sheet updated — added missing columns: '+res.added.join(', '),false);
+        // Refresh data now that columns exist
+        setTimeout(()=>doRefresh(),1200);
+      }
+      return true;
+    }else{
+      console.warn('ENSURE_COLUMNS failed:',res.message);
+      return false;
+    }
+  }catch(e){
+    console.warn('ensureSheetColumns error:',e.message);
+    return false;
+  }
+}
 const PAL=['#3b5bdb','#0ca678','#f08c00','#d6336c','#7048e8','#0c8599','#e8590c','#1098ad','#2f9e44','#862e9c','#c92a2a','#5c7cfa','#20c997','#fd7e14','#e64980'];
 // ══ UTILITIES ════════════════════════════════════════════════════════
 function todayStr(){const d=new Date();return d.toISOString().split('T')[0];}
@@ -817,7 +851,7 @@ firebase.auth().onAuthStateChanged(u=>{
 
 // ── AUTH ──────────────────────────────────────────────────────────────
 function showAuth(){$('auth-screen').style.display='flex';$('app-screen').style.display='none';}
-function showApp(){$('auth-screen').style.display='none';$('app-screen').style.display='block';initApp();}
+function showApp(){$('auth-screen').style.display='none';$('app-screen').style.display='block';initApp();ensureSheetColumns();}
 
 async function doLogin(){
   const email=$('login-email').value.trim(),pass=$('login-pass').value,btn=$('login-btn');
@@ -1000,6 +1034,8 @@ async function submitEntry(){
   };
   CUSTOM_COLS.forEach(c=>{const el=$('f-'+c.key);payload[c.key]=el?el.value:'';});
   $('submit-btn').style.display='none';$('submit-spinner').style.display='flex';
+  // Auto-add missing sheet columns before submitting
+  await ensureSheetColumns();
   try{
     const r=await fetch(APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
     const res=await r.json();
@@ -1524,6 +1560,8 @@ async function submitExcelBatch(){
   const dname=currentUser.displayName||nameFromEmail(currentUser.email);
   $('xl-submit-btn').disabled=true;
   $('xl-submit-progress').style.display='block';
+  // Auto-add missing sheet columns before batch submit
+  await ensureSheetColumns();
   let done=0,failed=0;
   for(const r of submittable){
     const existing=sheetsData[r.date]&&sheetsData[r.date][r.entity];
