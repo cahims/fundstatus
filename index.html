@@ -388,6 +388,8 @@ th.cmp-diff{background:#fff9db;color:var(--amber)}
         <div style="margin-left:auto;display:flex;gap:6px">
           <button class="btn btn-sm" id="ch-toggle-bar" onclick="setChartStyle('bar')" style="background:#1a2a6c;color:#fff;font-size:11px">Bar</button>
           <button class="btn btn-ghost btn-sm" id="ch-toggle-line" onclick="setChartStyle('line')" style="font-size:11px">Line</button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadAllCharts()" title="Download all charts">⬇ Charts</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportExcel()" title="Download data as Excel">⬇ Excel</button>
         </div>
       </div>
 
@@ -448,6 +450,8 @@ th.cmp-diff{background:#fff9db;color:var(--amber)}
           </div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <div class="search-box">🔍 <input type="text" placeholder="Search entity…" oninput="filterTable(this.value)"></div>
+            <button class="btn btn-ghost btn-sm" onclick="exportExcel()" title="Download as Excel">⬇ Excel</button>
+            <button class="btn btn-ghost btn-sm" onclick="exportCSV()" title="Download as CSV">⬇ CSV</button>
           </div>
         </div>
         <div style="overflow-x:auto">
@@ -826,31 +830,33 @@ th.cmp-diff{background:#fff9db;color:var(--amber)}
 
     <!-- ═══ USERS ═══ -->
     <div id="tab-users" style="display:none">
-      <div class="info-box">Create login accounts. Display name appears in the topbar and submission log — not email.</div>
+      <div class="info-box">🔓 <strong>Open Access Mode</strong> — anyone with the link can view the dashboard. Add team member names below for the submission log display.</div>
+
       <div class="card" style="padding:20px;margin-bottom:16px">
-        <div style="font-size:14px;font-weight:800;margin-bottom:14px">Add new user</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end">
-          <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="new-email" placeholder="user@company.com"></div>
-          <div class="form-group"><label class="form-label">Display name</label><input type="text" class="form-input" id="new-name" placeholder="Full name"></div>
-          <div class="form-group"><label class="form-label">Role</label><select class="form-input" id="new-role"><option value="user">User</option><option value="admin">Admin</option></select></div>
-          <button class="btn btn-blue" onclick="createUser()">+ Create</button>
-        </div>
-        <div class="warn-box" style="margin-top:12px;margin-bottom:0">⚠️ Temp password shown once — share securely. User should change on first login.</div>
-      </div>
-      <div class="card">
-        <div class="card-header"><div class="card-title">Team</div></div>
-        <div style="overflow-x:auto"><table><thead><tr><th>Email</th><th>Display name</th><th>Role</th><th>Note</th></tr></thead><tbody id="users-tbody"></tbody></table></div>
-      </div>
-      <div class="overlay" id="temppass-modal">
-        <div class="modal" style="width:360px">
-          <div class="modal-title">✅ User created</div>
-          <div class="modal-sub">Share these credentials securely.</div>
-          <div style="background:#f8f9fc;border-radius:var(--radius);padding:13px;font-size:13px;line-height:2.1">
-            <div><strong>Email:</strong> <span id="tp-email"></span></div>
-            <div><strong>Temp password:</strong> <code id="tp-pass" style="background:#e4e7f3;padding:2px 8px;border-radius:4px"></code></div>
-            <div><strong>Role:</strong> <span id="tp-role"></span></div>
+        <div style="font-size:14px;font-weight:800;margin-bottom:14px">Add Team Member</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end">
+          <div class="form-group"><label class="form-label">Name</label><input type="text" class="form-input" id="new-name" placeholder="Full name"></div>
+          <div class="form-group"><label class="form-label">Entity Responsible</label>
+            <select class="form-input" id="new-user-entity"><option value="">All / None</option></select>
           </div>
-          <div class="modal-actions"><button class="btn btn-blue" onclick="closeModal('temppass-modal')">Done</button></div>
+          <button class="btn btn-blue" onclick="addTeamMember()">+ Add</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">Team Members</div><div class="card-sub" id="team-count"></div></div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>#</th><th>Name</th><th>Entity</th><th></th></tr></thead>
+          <tbody id="team-tbody"></tbody></table>
+        </div>
+      </div>
+
+      <div class="card" style="padding:20px;margin-top:16px">
+        <div style="font-size:14px;font-weight:800;margin-bottom:6px">Share Dashboard</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Share this file — anyone who opens it will see live data from the Google Sheet.</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-blue btn-sm" onclick="copyShareLink()">📋 Copy file link</button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadDashboard()">⬇ Download HTML file</button>
         </div>
       </div>
     </div>
@@ -963,7 +969,7 @@ function initApp(){
     document.querySelectorAll('.admin-only').forEach(el=>el.style.display='');
     $('audit-date-filter').value=today;
   }
-  refreshEntitySelects();buildTableHeader();
+  refreshEntitySelects();buildTableHeader();renderTeam();
   doRefresh();
 }
 
@@ -1969,14 +1975,114 @@ function clearForm(){
 }
 function showStatus(msg,isErr){const el=$('status-bar');el.textContent=msg;el.className='status-bar show '+(isErr?'status-err':'status-ok');setTimeout(()=>el.classList.remove('show'),6000);}
 function setSyncState(state,text){const el=$('sync-chip');el.textContent=text;el.className='sync-chip '+(state==='ok'?'sync-ok':state==='err'?'sync-err':'sync-loading');}
+// ── EXPORT DATA ────────────────────────────────────────────────────────
 function exportExcel(){
   const data=sheetsData[dashDate]||{};
-  const hdr=['Entity','Bank Balance','Sweep Deposit','Fixed Deposits','Mutual Funds','Bonds/Deb','BRS','Total',...CUSTOM_COLS.map(c=>c.label),'Reserve Fund','Restricted Fund','Locked Funds','Available Funds','Submitted by','Submitted at'];
+  const hdr=['Entity','Bank Balance','Sweep Deposit','Fixed Deposits','Mutual Funds','Bonds/Deb','BRS','Total','Reserve Fund','Restricted Fund','Locked Funds','Available Funds','Submitted By','Submitted At'];
   const rows=[hdr];
-  ENTITIES.forEach(e=>{const r=data[e]||{};const c=compute(r);rows.push([e,r.bank||0,r.sweep||0,r.fd||0,r.mf||0,r.bonds||0,r.brs||0,c.total,...CUSTOM_COLS.map(col=>r[col.key]||''),r.reserve||0,r.restricted||0,r.locked_funds||0,c.available,r.submittedBy||'',r.submittedAt||'']);});
-  const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Balance_'+dashDate);
-  XLSX.writeFile(wb,'BankBalance_'+dashDate+'.xlsx');showStatus('✓ Excel downloaded',false);
+  getActiveEntities().forEach(e=>{
+    const r=data[e]||{};const c=compute(r);
+    rows.push([e,r.bank||0,r.sweep||0,r.fd||0,r.mf||0,r.bonds||0,r.brs||0,c.total,r.reserve||0,r.restricted||0,r.locked_funds||0,c.available,r.submittedByName||r.submittedBy||'',r.submittedAt||'']);
+  });
+  // Add totals row
+  const t=rows.slice(1).reduce((acc,row)=>{[1,2,3,4,5,6,7,8,9,10,11].forEach(i=>acc[i]=(acc[i]||0)+(parseFloat(row[i])||0));return acc;},['TOTAL']);
+  rows.push(t);
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  // Style header row
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Balance_'+dashDate);
+  XLSX.writeFile(wb,'BankBalance_'+dashDate+'.xlsx');
+  showStatus('✓ Excel downloaded',false);
 }
+
+function exportCSV(){
+  const data=sheetsData[dashDate]||{};
+  const hdr=['Entity','Bank Balance','Sweep Deposit','Fixed Deposits','Mutual Funds','Bonds/Deb','BRS','Total','Reserve Fund','Restricted Fund','Locked Funds','Available Funds'];
+  const rows=[hdr];
+  getActiveEntities().forEach(e=>{
+    const r=data[e]||{};const c=compute(r);
+    rows.push([e,r.bank||0,r.sweep||0,r.fd||0,r.mf||0,r.bonds||0,r.brs||0,c.total,r.reserve||0,r.restricted||0,r.locked_funds||0,c.available]);
+  });
+  const csv=rows.map(r=>r.join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='BankBalance_'+dashDate+'.csv';a.click();
+  showStatus('✓ CSV downloaded',false);
+}
+
+function downloadAllCharts(){
+  const charts=[
+    {id:'chartBar',name:'Entity_Balances'},
+    {id:'chartDonut',name:'Portfolio_Composition'},
+    {id:'chartHBar',name:'Top_Entities'},
+    {id:'chartRatio',name:'Fund_Allocation'},
+    {id:'chartAvailLock',name:'Available_vs_Locked'},
+  ];
+  charts.forEach((ch,i)=>{
+    setTimeout(()=>{
+      const canvas=document.getElementById(ch.id);
+      if(!canvas)return;
+      const a=document.createElement('a');
+      a.href=canvas.toDataURL('image/png');
+      a.download=ch.name+'_'+dashDate+'.png';
+      a.click();
+    },i*300); // stagger to avoid browser blocking
+  });
+  showStatus('✓ Downloading 5 chart images…',false);
+}
+
+// ── TEAM MANAGEMENT ────────────────────────────────────────────────────
+let TEAM=JSON.parse(localStorage.getItem('bb_team')||'[]');
+
+function saveTeam(){localStorage.setItem('bb_team',JSON.stringify(TEAM));}
+
+function addTeamMember(){
+  const name=($('new-name')||{}).value?.trim();
+  const entity=($('new-user-entity')||{}).value||'';
+  if(!name){showStatus('Enter a name.',true);return;}
+  TEAM.push({name,entity,added:new Date().toISOString()});
+  saveTeam();
+  if($('new-name'))$('new-name').value='';
+  renderTeam();
+  showStatus('✓ '+name+' added to team.',false);
+}
+
+function removeTeamMember(i){
+  TEAM.splice(i,1);saveTeam();renderTeam();
+}
+
+function renderTeam(){
+  const tb=$('team-tbody');if(!tb)return;
+  if($('team-count'))$('team-count').textContent=TEAM.length+' members';
+  // Populate entity dropdown
+  const sel=$('new-user-entity');
+  if(sel){
+    sel.innerHTML='<option value="">All / None</option>'+ENTITIES.map(e=>`<option value="${e}">${e}</option>`).join('');
+  }
+  tb.innerHTML=TEAM.length?TEAM.map((m,i)=>`
+    <tr>
+      <td style="color:var(--muted)">${i+1}</td>
+      <td><strong>${m.name}</strong></td>
+      <td>${m.entity?`<span class="badge badge-blue">${m.entity}</span>`:'<span style="color:var(--hint)">—</span>'}</td>
+      <td><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="removeTeamMember(${i})">Remove</button></td>
+    </tr>`).join('')
+  :'<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--hint)">No team members yet — add names above.</td></tr>';
+}
+
+function copyShareLink(){
+  navigator.clipboard.writeText(window.location.href).then(()=>showStatus('✓ Link copied — share with your team.',false));
+}
+
+function downloadDashboard(){
+  const html=document.documentElement.outerHTML;
+  const a=document.createElement('a');
+  a.href='data:text/html;charset=utf-8,'+encodeURIComponent(html);
+  a.download='BankBalanceHub.html';a.click();
+  showStatus('✓ Dashboard downloaded.',false);
+}
+
+async function createUser(){showStatus('Login removed — use open access.',false);}
+
 // ═══════════════════════════════════════════════════════════════════════
 // ── EXCEL BULK UPLOAD ──────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════
