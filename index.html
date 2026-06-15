@@ -363,24 +363,82 @@ th.cmp-diff{background:#fff9db;color:var(--amber)}
       <div id="metric-row-top"></div>
       <div id="metric-row"></div>
 
-      <div class="chart-grid-4">
-        <div class="chart-card">
-          <div class="chart-header"><div><div class="chart-title">Balance by entity</div><div class="chart-sub">Stacked: Liquid · Treasury · MF</div></div><span class="chart-badge">Bar</span></div>
-          <div style="position:relative;height:220px"><canvas id="chartBar"></canvas></div>
+      <!-- Charts filter bar -->
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <span style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Charts</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <label style="font-size:11px;font-weight:700;color:var(--muted)">Show</label>
+          <select class="form-input" id="chart-metric" style="width:170px;font-size:12px" onchange="renderCharts(sheetsData[dashDate]||{})">
+            <option value="total">Total Balance</option>
+            <option value="available">Available Funds</option>
+            <option value="immediate">Immediate Use</option>
+            <option value="investments">Investments</option>
+            <option value="locked">Locked / Reserved</option>
+            <option value="bank">Bank Balance</option>
+            <option value="sweep">Sweep Deposit</option>
+          </select>
         </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <label style="font-size:11px;font-weight:700;color:var(--muted)">Top N</label>
+          <select class="form-input" id="chart-topn" style="width:80px;font-size:12px" onchange="renderCharts(sheetsData[dashDate]||{})">
+            <option value="5">Top 5</option>
+            <option value="10">Top 10</option>
+            <option value="999" selected>All</option>
+          </select>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:6px">
+          <button class="btn btn-sm" id="ch-toggle-bar" onclick="setChartStyle('bar')" style="background:#1a2a6c;color:#fff;font-size:11px">Bar</button>
+          <button class="btn btn-ghost btn-sm" id="ch-toggle-line" onclick="setChartStyle('line')" style="font-size:11px">Line</button>
+        </div>
+      </div>
+
+      <!-- 5 charts grid: 3 top + 2 bottom -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
+
         <div class="chart-card">
-          <div class="chart-header"><div><div class="chart-title">Fund composition</div><div class="chart-sub">Portfolio allocation %</div></div><span class="chart-badge">Donut</span></div>
-          <div style="position:relative;height:180px"><canvas id="chartDonut"></canvas></div>
+          <div class="chart-header">
+            <div><div class="chart-title">Entity Balances</div><div class="chart-sub" id="ch1-sub">By selected metric</div></div>
+            <span class="chart-badge" style="background:#0d1b4b;color:#a5b4fc">Bar</span>
+          </div>
+          <div style="position:relative;height:230px"><canvas id="chartBar"></canvas></div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><div class="chart-title">Portfolio Composition</div><div class="chart-sub">Immediate · Investments · Locked</div></div>
+            <span class="chart-badge" style="background:#0d1b4b;color:#a5b4fc">Donut</span>
+          </div>
+          <div style="position:relative;height:170px"><canvas id="chartDonut"></canvas></div>
           <div id="donut-legend" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:10px;color:var(--muted);justify-content:center"></div>
         </div>
+
         <div class="chart-card">
-          <div class="chart-header"><div><div class="chart-title">Top entities by total</div><div class="chart-sub">Ranked horizontal view</div></div><span class="chart-badge">H-Bar</span></div>
-          <div style="position:relative;height:220px"><canvas id="chartHBar"></canvas></div>
+          <div class="chart-header">
+            <div><div class="chart-title">Top Entities Ranking</div><div class="chart-sub" id="ch3-sub">Horizontal bar</div></div>
+            <span class="chart-badge" style="background:#0d1b4b;color:#a5b4fc">H-Bar</span>
+          </div>
+          <div style="position:relative;height:230px"><canvas id="chartHBar"></canvas></div>
         </div>
+
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
+
         <div class="chart-card">
-          <div class="chart-header"><div><div class="chart-title">Liquid vs Treasury ratio</div><div class="chart-sub">100% stacked per entity</div></div><span class="chart-badge">Ratio</span></div>
+          <div class="chart-header">
+            <div><div class="chart-title">Fund Allocation %</div><div class="chart-sub">100% stacked · Immediate vs Inv vs Available</div></div>
+            <span class="chart-badge" style="background:#0d1b4b;color:#a5b4fc">Stacked</span>
+          </div>
           <div style="position:relative;height:220px"><canvas id="chartRatio"></canvas></div>
         </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <div><div class="chart-title">Available vs Locked</div><div class="chart-sub">Free funds vs locked/reserved per entity</div></div>
+            <span class="chart-badge" style="background:#0d1b4b;color:#a5b4fc">Grouped</span>
+          </div>
+          <div style="position:relative;height:220px"><canvas id="chartAvailLock"></canvas></div>
+        </div>
+
       </div>
 
       <div class="card">
@@ -892,7 +950,7 @@ let currentUser=null,isAdmin=false;
 let sheetsData={},auditLog=[];
 let dashDate=todayStr();
 let arTimer=null,arCountTimer=null,arCount=5;
-let bChart,dChart,hChart,rChart,cmpChart2;
+let bChart,dChart,hChart,rChart,alChart,cmpChart2,anChart;
 let ENTITIES=JSON.parse(localStorage.getItem('bb_ent')||'null')||['MAIA','MEIPL','MEOPL','MLS','MLSIPL','NHD','JGD','JVDPL','RDL','NHEPL','NHBPL','NHRPL','NPDLLP','PPEPL','NYPL','SGELLP','SGRPL'];
 let CUSTOM_COLS=JSON.parse(localStorage.getItem('bb_cc')||'[]');
 
@@ -1505,33 +1563,162 @@ function renderTable(data){
 }
 
 // ── 4 CHARTS ──────────────────────────────────────────────────────────
+// ── CFO COLOR PALETTE ─────────────────────────────────────────────────
+const CFO={
+  navy:'#0d1b4b', blue:'#1a3a8f', indigo:'#2d55cc', steel:'#4a7fd4',
+  sky:'#6aa3e0',  teal:'#0e7490', green:'#0e9f6e', gold:'#b45309',
+  amber:'#d97706',slate:'#475569', red:'#be123c',   plum:'#6d28d9',
+  // Softer fills
+  navyA:'rgba(13,27,75,.75)',   blueA:'rgba(26,58,143,.7)',
+  indigoA:'rgba(45,85,204,.7)', steelA:'rgba(74,127,212,.7)',
+  skyA:'rgba(106,163,224,.7)',  tealA:'rgba(14,116,144,.7)',
+  greenA:'rgba(14,159,110,.7)', goldA:'rgba(180,83,9,.7)',
+  amberA:'rgba(217,119,6,.7)',  redA:'rgba(190,18,60,.7)',
+  plumA:'rgba(109,40,217,.7)',
+};
+const CFO_BAR=[CFO.navyA,CFO.indigoA,CFO.steelA,CFO.tealA,CFO.greenA,CFO.goldA,CFO.amberA,CFO.redA,CFO.plumA,CFO.blueA,CFO.skyA,CFO.slateA];
+const CFO_SOLID=[CFO.navy,CFO.indigo,CFO.steel,CFO.teal,CFO.green,CFO.gold,CFO.amber,CFO.red,CFO.plum,CFO.blue,CFO.sky];
+
+let chartStyle='bar'; // 'bar' or 'line'
+function setChartStyle(s){
+  chartStyle=s;
+  $('ch-toggle-bar').style.cssText=s==='bar'?'background:#0d1b4b;color:#fff;font-size:11px':'font-size:11px';
+  $('ch-toggle-bar').className='btn btn-sm'+(s==='bar'?'':' btn-ghost');
+  $('ch-toggle-line').style.cssText=s==='line'?'background:#0d1b4b;color:#fff;font-size:11px':'font-size:11px';
+  $('ch-toggle-line').className='btn btn-sm'+(s==='line'?'':' btn-ghost');
+  renderCharts(sheetsData[dashDate]||{});
+}
+
+function getChartMetricVal(r,metric){
+  if(!r)return 0;
+  const c=compute(r);
+  if(metric==='total')return c.total;
+  if(metric==='available')return c.available;
+  if(metric==='immediate')return(r.bank||0)+(r.sweep||0);
+  if(metric==='investments')return c.investments;
+  if(metric==='locked')return(r.reserve||0)+(r.restricted||0)+(r.locked_funds||0);
+  return parseFloat(r[metric])||0;
+}
+const CHART_METRIC_LABELS={total:'Total Balance',available:'Available Funds',immediate:'Immediate Use',investments:'Investments',locked:'Locked/Reserved',bank:'Bank Balance',sweep:'Sweep Deposit'};
+
 function renderCharts(data){
-  const labels=[],liq=[],inv=[],avail=[],total=[];
-  ENTITIES.forEach(e=>{const r=data[e]||{};const c=compute(r);if(c.total>0){labels.push(e);liq.push(c.liquid);inv.push(c.investments);avail.push(c.available);total.push(c.total);}});
-  const opts={responsive:true,maintainAspectRatio:false};
-  if(!labels.length){[bChart,dChart,hChart,rChart].forEach(ch=>{if(ch)ch.destroy();});return;}
+  const active=getActiveEntities();
+  const metric=($('chart-metric')||{}).value||'total';
+  const topN=parseInt(($('chart-topn')||{}).value||999);
+  const mLabel=CHART_METRIC_LABELS[metric]||metric;
+  const opts={responsive:true,maintainAspectRatio:false,animation:{duration:400}};
+  const gridColor='#e8ecf4';
+  const tickFont={size:9,family:'-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif'};
+
+  // Build entity data
+  let rows=active.map(e=>{
+    const r=data[e]||{};const c=compute(r);
+    return{e,r,c,
+      metricVal:getChartMetricVal(r,metric),
+      immediate:(r.bank||0)+(r.sweep||0),
+      investments:c.investments,
+      available:c.available,
+      locked:(r.reserve||0)+(r.restricted||0)+(r.locked_funds||0),
+      total:c.total,
+    };
+  }).filter(x=>x.total>0);
+
+  if(!rows.length){[bChart,dChart,hChart,rChart,alChart].forEach(ch=>{if(ch)ch.destroy();});return;}
+
+  // Apply topN
+  const rowsSorted=[...rows].sort((a,b)=>b.metricVal-a.metricVal).slice(0,topN);
+  const labels=rowsSorted.map(x=>x.e);
+
+  if($('ch1-sub'))$('ch1-sub').textContent=mLabel+' · ₹ Crores';
+  if($('ch3-sub'))$('ch3-sub').textContent='By '+mLabel;
+
+  // ── CHART 1: Entity metric (bar or line) ────────────────────────────
   if(bChart)bChart.destroy();
-  bChart=new Chart($('chartBar'),{type:'bar',data:{labels,datasets:[
-    {label:'Liquid',data:liq,backgroundColor:'#5c7cfa',borderRadius:4,borderSkipped:false},
-    {label:'Investments',data:inv,backgroundColor:'#0ca678',borderRadius:0,borderSkipped:false},
-    {label:'Available',data:avail,backgroundColor:'#f08c00',borderRadius:0,borderSkipped:false},
-  ]},options:{...opts,plugins:{legend:{display:true,position:'bottom',labels:{font:{size:10},boxWidth:10}}},scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:9}}},y:{stacked:true,grid:{color:'#f0f2f8'},ticks:{font:{size:9}}}}}});
-  const sL=liq.reduce((a,b)=>a+b,0),sI=inv.reduce((a,b)=>a+b,0),sA=avail.reduce((a,b)=>a+b,0);
-  const sRes=ENTITIES.reduce((a,e)=>{const r=data[e];return a+(r?r.reserve||0:0);},0);
-  const sRest=ENTITIES.reduce((a,e)=>{const r=data[e];return a+(r?r.restricted||0:0);},0);
-  const sLk=ENTITIES.reduce((a,e)=>{const r=data[e];return a+(r?r.locked_funds||0:0);},0);
+  bChart=new Chart($('chartBar'),{
+    type:chartStyle,
+    data:{labels,datasets:[{
+      label:mLabel+' ₹Cr',
+      data:rowsSorted.map(x=>+x.metricVal.toFixed(2)),
+      backgroundColor:CFO_BAR,
+      borderColor:CFO_SOLID,
+      borderWidth:chartStyle==='line'?2:0,
+      borderRadius:chartStyle==='bar'?5:0,
+      pointBackgroundColor:CFO_SOLID,
+      pointRadius:4,fill:false,tension:.35,
+    }]},
+    options:{...opts,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₹ '+c.parsed.y.toFixed(2)+' Cr'}}},
+      scales:{x:{grid:{display:false},ticks:{font:tickFont}},y:{grid:{color:gridColor},ticks:{font:tickFont,callback:v=>'₹'+v}}}}
+  });
+
+  // ── CHART 2: Portfolio donut ─────────────────────────────────────────
+  const totImm=rows.reduce((s,x)=>s+x.immediate,0);
+  const totInv=rows.reduce((s,x)=>s+x.investments,0);
+  const totAvail=rows.reduce((s,x)=>s+x.available,0);
+  const totLock=rows.reduce((s,x)=>s+x.locked,0);
+  const donutTotal=totImm+totInv+totLock;
   if(dChart)dChart.destroy();
-  dChart=new Chart($('chartDonut'),{type:'doughnut',data:{labels:['Liquid','FD+MF+Bonds','Available','Reserve','Restricted','Locked'],datasets:[{data:[sL,sI,sA,sRes,sRest,sLk],backgroundColor:['#5c7cfa','#0ca678','#f08c00','#d6336c','#7048e8','#0c8599'],borderWidth:0,hoverOffset:8}]},options:{...opts,plugins:{legend:{display:false}},cutout:'60%'}});
-  const tot2=[sL,sI,sA,sRes,sRest,sLk].reduce((a,b)=>a+b,0);
-  $('donut-legend').innerHTML=[['Liquid','#5c7cfa',sL],['Investments','#0ca678',sI],['Available','#f08c00',sA],['Reserve','#d6336c',sRes],['Restricted','#7048e8',sRest],['Locked','#0c8599',sLk]].map(([l,c,v])=>`<span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;border-radius:2px;background:${c}"></span>${l} ${tot2>0?(v/tot2*100).toFixed(1)+'%':''}</span>`).join('');
-  const sorted=[...labels.map((l,i)=>({l,v:total[i]}))].sort((a,b)=>b.v-a.v).slice(0,12);
+  dChart=new Chart($('chartDonut'),{
+    type:'doughnut',
+    data:{
+      labels:['Immediate Use','Investments','Locked/Reserved'],
+      datasets:[{data:[+totImm.toFixed(2),+totInv.toFixed(2),+totLock.toFixed(2)],
+        backgroundColor:[CFO.navyA,CFO.steelA,CFO.redA],
+        borderColor:[CFO.navy,CFO.steel,CFO.red],
+        borderWidth:2,hoverOffset:10}]
+    },
+    options:{...opts,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₹ '+c.parsed.toFixed(2)+' Cr ('+( donutTotal>0?(c.parsed/donutTotal*100).toFixed(1):0)+'%)'}}},cutout:'62%'}
+  });
+  $('donut-legend').innerHTML=[
+    ['Immediate',CFO.navy,totImm],
+    ['Investments',CFO.steel,totInv],
+    ['Locked',CFO.red,totLock],
+    ['Available',CFO.green,totAvail],
+  ].map(([l,c,v])=>`<span style="display:flex;align-items:center;gap:3px;font-size:10px">
+    <span style="width:9px;height:9px;border-radius:2px;background:${c};display:inline-block"></span>
+    ${l} <strong>${donutTotal>0?(v/donutTotal*100).toFixed(0)+'%':''}</strong>
+  </span>`).join('');
+
+  // ── CHART 3: Horizontal ranking ──────────────────────────────────────
+  const ranked=[...rowsSorted].sort((a,b)=>b.metricVal-a.metricVal);
   if(hChart)hChart.destroy();
-  hChart=new Chart($('chartHBar'),{type:'bar',data:{labels:sorted.map(x=>x.l),datasets:[{label:'Total ₹Cr',data:sorted.map(x=>x.v),backgroundColor:sorted.map((_,i)=>PAL[i%PAL.length]),borderRadius:4}]},options:{...opts,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:{color:'#f0f2f8'},ticks:{font:{size:9}}},y:{grid:{display:false},ticks:{font:{size:9}}}}}});
-  const lPct=labels.map((_,i)=>total[i]>0?+(liq[i]/total[i]*100).toFixed(1):0);
-  const iPct=labels.map((_,i)=>total[i]>0?+(inv[i]/total[i]*100).toFixed(1):0);
-  const aPct=labels.map((_,i)=>total[i]>0?+(avail[i]/total[i]*100).toFixed(1):0);
+  hChart=new Chart($('chartHBar'),{
+    type:'bar',
+    data:{labels:ranked.map(x=>x.e),datasets:[{
+      label:mLabel+' ₹Cr',
+      data:ranked.map(x=>+x.metricVal.toFixed(2)),
+      backgroundColor:ranked.map((_,i)=>CFO_BAR[i%CFO_BAR.length]),
+      borderColor:ranked.map((_,i)=>CFO_SOLID[i%CFO_SOLID.length]),
+      borderWidth:1,borderRadius:4,
+    }]},
+    options:{...opts,indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₹ '+c.parsed.x.toFixed(2)+' Cr'}}},
+      scales:{x:{grid:{color:gridColor},ticks:{font:tickFont,callback:v=>'₹'+v}},y:{grid:{display:false},ticks:{font:tickFont}}}}
+  });
+
+  // ── CHART 4: 100% stacked allocation ────────────────────────────────
+  const pct=(v,t)=>t>0?+(v/t*100).toFixed(1):0;
   if(rChart)rChart.destroy();
-  rChart=new Chart($('chartRatio'),{type:'bar',data:{labels,datasets:[{label:'Liquid %',data:lPct,backgroundColor:'#5c7cfa99',borderSkipped:false},{label:'Inv %',data:iPct,backgroundColor:'#0ca67899',borderSkipped:false},{label:'Avail %',data:aPct,backgroundColor:'#f08c0099',borderSkipped:false}]},options:{...opts,plugins:{legend:{display:true,position:'bottom',labels:{font:{size:10},boxWidth:10}}},scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:9}}},y:{stacked:true,max:100,grid:{color:'#f0f2f8'},ticks:{font:{size:9},callback:v=>v+'%'}}}}});
+  rChart=new Chart($('chartRatio'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Immediate %',data:rowsSorted.map(x=>pct(x.immediate,x.total)),backgroundColor:CFO.navyA,borderColor:CFO.navy,borderWidth:1,borderSkipped:false},
+      {label:'Investments %',data:rowsSorted.map(x=>pct(x.investments,x.total)),backgroundColor:CFO.steelA,borderColor:CFO.steel,borderWidth:1,borderSkipped:false},
+      {label:'Available %',data:rowsSorted.map(x=>pct(x.available,x.total)),backgroundColor:CFO.tealA,borderColor:CFO.teal,borderWidth:1,borderSkipped:false},
+    ]},
+    options:{...opts,plugins:{legend:{display:true,position:'bottom',labels:{font:tickFont,boxWidth:10,padding:10}}},
+      scales:{x:{stacked:true,grid:{display:false},ticks:{font:tickFont}},y:{stacked:true,max:100,grid:{color:gridColor},ticks:{font:tickFont,callback:v=>v+'%'}}}}
+  });
+
+  // ── CHART 5: Available vs Locked grouped ────────────────────────────
+  if(alChart)alChart.destroy();
+  alChart=new Chart($('chartAvailLock'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Available ₹Cr',data:rowsSorted.map(x=>+x.available.toFixed(2)),backgroundColor:CFO.greenA,borderColor:CFO.green,borderWidth:1,borderRadius:4,borderSkipped:false},
+      {label:'Locked/Reserved ₹Cr',data:rowsSorted.map(x=>+x.locked.toFixed(2)),backgroundColor:CFO.redA,borderColor:CFO.red,borderWidth:1,borderRadius:4,borderSkipped:false},
+    ]},
+    options:{...opts,plugins:{legend:{display:true,position:'bottom',labels:{font:tickFont,boxWidth:10,padding:10}},tooltip:{callbacks:{label:c=>'₹ '+c.parsed.y.toFixed(2)+' Cr'}}},
+      scales:{x:{grid:{display:false},ticks:{font:tickFont}},y:{grid:{color:gridColor},ticks:{font:tickFont,callback:v=>'₹'+v}}}}
+  });
 }
 
 // ── PENDING ALERT ─────────────────────────────────────────────────────
