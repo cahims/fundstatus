@@ -569,35 +569,6 @@ th.cmp-diff{background:#fff9db;color:var(--amber)}
           <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Entities (<span id="entity-count">0</span>)</div>
           <div id="entity-chips"></div>
         </div>
-
-        <div style="padding-top:12px;border-top:1px solid var(--border)">
-          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">➕ Add Custom Column</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end;margin-bottom:6px">
-            <div class="form-group" style="margin:0">
-              <label class="form-label">Column Name</label>
-              <input type="text" class="form-input" id="new-col-name" placeholder="e.g. Commercial Paper">
-            </div>
-            <div class="form-group" style="margin:0">
-              <label class="form-label">Type</label>
-              <select class="form-input" id="new-col-type">
-                <option value="number">Number ₹Cr</option>
-                <option value="text">Text</option>
-              </select>
-            </div>
-            <div class="form-group" style="margin:0">
-              <label class="form-label">Counts Towards</label>
-              <select class="form-input" id="new-col-group">
-                <option value="liquid">💧 Liquid Total</option>
-                <option value="investment">📈 Investments Total</option>
-                <option value="deduction">🔒 Deduction (reduces Available)</option>
-                <option value="none">ℹ️ Info only</option>
-              </select>
-            </div>
-            <button class="btn btn-teal btn-sm" onclick="addCustomCol()" style="height:36px;white-space:nowrap">+ Add</button>
-          </div>
-          <div style="font-size:11px;color:var(--hint);margin-bottom:8px">New columns are auto-added to Google Sheet header on next submit.</div>
-          <div id="custom-col-chips"></div>
-        </div>
       </div>
 
       <!-- Delete date panel (admin only) -->
@@ -972,11 +943,13 @@ function fbErr(c){return'';}
 
 // ── INIT ──────────────────────────────────────────────────────────────
 function initApp(){
-  const today=todayStr();dashDate=today;
+  const today=todayStr();
+  const yesterday=prevDay(today);
+  dashDate=yesterday; // default to yesterday — funds updated for previous day
   $('today-badge').textContent=fmtDate(today);
   $('entry-date').value=today;$('entry-date').max=today;
-  $('dash-date').value=today;$('dash-date').max=today;
-  $('cmp-date1').value=today;$('cmp-date2').value=today;
+  $('dash-date').value=yesterday;$('dash-date').max=today;
+  $('cmp-date1').value=yesterday;$('cmp-date2').value=today;
   updateDashLabel();
 
   const dname=currentUser.displayName||nameFromEmail(currentUser.email);
@@ -990,9 +963,11 @@ function initApp(){
     document.querySelectorAll('.admin-only').forEach(el=>el.style.display='');
     $('audit-date-filter').value=today;
   }
-  refreshEntitySelects();renderCustomColChips();renderCustomColFields();buildTableHeader();
+  refreshEntitySelects();buildTableHeader();
   doRefresh();
 }
+
+function prevDay(d){const dt=new Date(d+'T00:00:00');dt.setDate(dt.getDate()-1);return dt.toISOString().slice(0,10);}
 function nameFromEmail(e){return e.split('@')[0].replace(/[._]/g,' ').replace(/\b\w/g,c=>c.toUpperCase());}
 
 // ── AUTO-REFRESH ──────────────────────────────────────────────────────
@@ -1024,6 +999,13 @@ async function doRefresh(){
     setSyncState('ok','✅ Live · '+fmtTime(now));
     $('data-src-label').textContent='Google Sheet · live';
     $('last-refresh').textContent='Last: '+fmtTime(now);
+    // Snap to latest date with data, preferring yesterday
+    const available=Object.keys(sheetsData).sort();
+    if(available.length){
+      const yesterday=prevDay(todayStr());
+      dashDate=available.includes(yesterday)?yesterday:available[available.length-1];
+      $('dash-date').value=dashDate;updateDashLabel();
+    }
     renderAll();
   }catch(e){
     setSyncState('err','❌ Error');
@@ -1317,12 +1299,23 @@ function addEntity(){
   const code=$('new-entity-code').value.trim().toUpperCase();
   if(!code||ENTITIES.includes(code)){showStatus(!code?'Enter code.':'Already exists.',true);return;}
   ENTITIES.push(code);saveEntities();$('new-entity-code').value='';
-  refreshEntitySelects();buildTableHeader();renderAll();showStatus('✓ "'+code+'" added.',false);
+  // Reset filters so new entity is included
+  selectedEntities=new Set();cmpSelectedEntities=new Set();
+  refreshEntitySelects();buildTableHeader();
+  renderEntityFilterList();updateEntityFilterLabel();
+  renderCmpEntityList();updateCmpLabel();
+  renderAll();
+  showStatus('✓ "'+code+'" added — all charts updated.',false);
 }
 function removeEntity(code){
   if(!confirm('Remove "'+code+'" from dashboard? (Sheet data not deleted.)'))return;
-  ENTITIES=ENTITIES.filter(e=>e!==code);saveEntities();
-  refreshEntitySelects();buildTableHeader();renderAll();showStatus('✓ Removed.',false);
+  ENTITIES=ENTITIES.filter(e=>e!==code);
+  selectedEntities.delete(code);cmpSelectedEntities.delete(code);
+  saveEntities();
+  refreshEntitySelects();buildTableHeader();
+  renderEntityFilterList();updateEntityFilterLabel();
+  renderCmpEntityList();updateCmpLabel();
+  renderAll();showStatus('✓ Removed.',false);
 }
 function quickRename(old){
   const nc=(prompt('Rename "'+old+'" to:','')||'').trim().toUpperCase();
@@ -1433,12 +1426,20 @@ document.addEventListener('click',e=>{
   const btn=$('entity-filter-btn');
   if(dd&&!dd.contains(e.target)&&btn&&!btn.contains(e.target))dd.style.display='none';
 });
-function onDashDateChange(){dashDate=$('dash-date').value||todayStr();updateDashLabel();renderAll();}
+function onDashDateChange(){dashDate=$('dash-date').value||prevDay(todayStr());updateDashLabel();renderAll();}
 function setDashToday(){dashDate=todayStr();$('dash-date').value=dashDate;updateDashLabel();renderAll();}
 function shiftDate(d){
-  const dt=new Date(dashDate+'T00:00:00');dt.setDate(dt.getDate()+d);
-  const ns=dt.toISOString().split('T')[0];if(ns>todayStr())return;
-  dashDate=ns;$('dash-date').value=ns;updateDashLabel();renderAll();
+  const available=Object.keys(sheetsData).sort();
+  if(!available.length){
+    const dt=new Date(dashDate+'T00:00:00');dt.setDate(dt.getDate()+d);
+    const ns=dt.toISOString().slice(0,10);if(ns>todayStr())return;
+    dashDate=ns;$('dash-date').value=ns;updateDashLabel();renderAll();return;
+  }
+  const cur=available.indexOf(dashDate);
+  let next;
+  if(d>0) next=cur>=0&&cur<available.length-1?available[cur+1]:todayStr();
+  else     next=cur>0?available[cur-1]:available[0];
+  dashDate=next;$('dash-date').value=next;updateDashLabel();renderAll();
 }
 function updateDashLabel(){
   const l=fmtDate(dashDate);
