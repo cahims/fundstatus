@@ -1048,27 +1048,36 @@ function parseSheetCSV(csv){
   rawHdr.forEach((h,i)=>{
     const key=h.toLowerCase().replace(/[\s\/\-]+/g,'');
     pos[key]=i;
+    // also store original lowercase for short-name matching
+    pos[h.toLowerCase().trim()]=i;
   });
-  const getCol=name=>{ const key=name.toLowerCase().replace(/[\s\/\-]+/g,''); return pos[key]!==undefined?pos[key]:-1; };
+  const getCol=(...names)=>{
+    for(const name of names){
+      const key=name.toLowerCase().replace(/[\s\/\-]+/g,'');
+      if(pos[key]!==undefined)return pos[key];
+      if(pos[name.toLowerCase().trim()]!==undefined)return pos[name.toLowerCase().trim()];
+    }
+    return -1;
+  };
 
   const C={
-    date:         getCol('date'),
-    entity:       getCol('entity'),
-    bank:         getCol('bankbalance'),
-    sweep:        getCol('sweepdeposit'),
-    fd:           getCol('fixeddeposits'),
-    mf:           getCol('mutualfunds'),
-    bonds:        getCol('bondsdeb'),
+    date:         getCol('date','dt'),
+    entity:       getCol('entity','company'),
+    bank:         getCol('bank balance','bank_balance','bank'),
+    sweep:        getCol('sweep deposit','sweep_deposit','sweep'),
+    fd:           getCol('fixed deposits','fixed_deposits','fd'),
+    mf:           getCol('mutual funds','mutual_funds','mf'),
+    bonds:        getCol('bonds/deb','bonds_deb','bonds'),
     brs:          getCol('brs'),
-    reserve:      getCol('reservefund'),
-    restricted:   getCol('restrictedfund'),
-    locked_funds: getCol('lockedfunds'),
+    reserve:      getCol('reserve fund','reserve_fund','reserve'),
+    restricted:   getCol('restricted fund','restricted_fund','restricted'),
+    locked_funds: getCol('locked funds','locked_funds','locked fund'),
     remarks:      getCol('remarks'),
-    submitted_by:      getCol('submittedby'),
-    submitted_by_name: getCol('submittedbyname'),
-    submitted_at:      getCol('submittedat'),
-    locked:       getCol('locked'),
-    audit_action: getCol('auditaction'),
+    submitted_by:      getCol('submitted by','submitted_by'),
+    submitted_by_name: getCol('submitted by name','submitted_by_name'),
+    submitted_at:      getCol('submitted at','submitted_at'),
+    locked:       getCol('locked','is_locked'),
+    audit_action: getCol('audit action','audit_action'),
   };
 
   console.log('RAW HEADERS:', JSON.stringify(rawHdr));
@@ -1931,21 +1940,6 @@ function renderAudit(){
     '<tr><td colspan="17" style="color:var(--hint);text-align:center;padding:18px">No records</td></tr>';
 }
 
-// ── USERS ──────────────────────────────────────────────────────────────
-$('users-tbody').innerHTML=`<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:14px">Manage in <a href="https://console.firebase.google.com" target="_blank" style="color:var(--blue)">Firebase Console → Authentication</a>. Create users below.</td></tr>`;
-async function createUser(){
-  const email=$('new-email').value.trim(),name=$('new-name').value.trim(),role=$('new-role').value;
-  if(!email||!name){showStatus('Email and name required.',true);return;}
-  const tp=Math.random().toString(36).slice(-8)+'A1!';
-  try{
-    const cred=await firebase.auth().createUserWithEmailAndPassword(email,tp);
-    await cred.user.updateProfile({displayName:name});
-    $('tp-email').textContent=email;$('tp-pass').textContent=tp;
-    $('tp-role').textContent=role+(role==='admin'?' — also add to ADMIN_EMAILS':'');
-    openModal('temppass-modal');
-    $('new-email').value='';$('new-name').value='';
-  }catch(e){showStatus('❌ '+fbErr(e.code),true);}
-}
 
 // ── UTILS ──────────────────────────────────────────────────────────────
 function $(id){return document.getElementById(id);}
