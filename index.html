@@ -1227,15 +1227,23 @@ async function submitEntry(){
     locked:true,
   };
   CUSTOM_COLS.forEach(c=>{const el=$('f-'+c.key);payload[c.key]=el?el.value:'';});
+  console.log('SUBMIT PAYLOAD:',JSON.stringify(payload));
   $('submit-btn').style.display='none';$('submit-spinner').style.display='flex';
-  // Auto-add missing sheet columns before submitting
-  await ensureSheetColumns();
+  // Auto-add missing sheet columns before submitting (non-blocking — ignore failures)
+  try{await ensureSheetColumns();}catch(e){console.warn('ensureSheetColumns skipped:',e.message);}
   try{
     const r=await fetch(APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
-    const res=await r.json();
+    console.log('SUBMIT HTTP STATUS:',r.status);
+    const text=await r.text();
+    console.log('SUBMIT RAW RESPONSE:',text);
+    let res;
+    try{res=JSON.parse(text);}catch(parseErr){throw new Error('Server returned non-JSON: '+text.slice(0,200));}
     if(res.status==='ok'){showStatus('✓ Submitted successfully.',false);clearForm();await doRefresh();}
-    else throw new Error(res.message||'Unknown error');
-  }catch(e){showStatus('❌ Submit failed: '+e.message,true);}
+    else throw new Error(res.message||'Unknown error from server');
+  }catch(e){
+    console.error('SUBMIT ERROR:',e);
+    showStatus('❌ Submit failed: '+e.message,true);
+  }
   finally{$('submit-btn').style.display='';$('submit-spinner').style.display='none';}
 }
 
