@@ -548,6 +548,49 @@ th.cmp-diff{background:#fff9db;color:var(--amber)}
     <div id="tab-entry" style="display:none">
 
 
+      <!-- Excel bulk upload -->
+      <div class="card" style="padding:20px;margin-bottom:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+          <div>
+            <div style="font-size:14px;font-weight:800">📂 Bulk Upload via Excel</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Upload .xlsx with columns: Date · Entity · Bank Balance · Sweep Deposit · Fixed Deposits · Mutual Funds · Bonds/Deb · BRS · Reserve Fund · Restricted Fund · Locked Funds · Remarks</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()">⬇ Download Template</button>
+            <label class="btn btn-green btn-sm" style="cursor:pointer">
+              📂 Choose Excel File
+              <input type="file" accept=".xlsx,.xls" style="display:none" onchange="handleExcelUpload(event)">
+            </label>
+          </div>
+        </div>
+        <div id="xl-preview-wrap" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+            <div>
+              <div style="font-size:12px;font-weight:800" id="xl-preview-title">Preview — 0 rows</div>
+              <div style="font-size:11px;color:var(--muted)" id="xl-preview-sub"></div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-ghost btn-sm" onclick="clearXlPreview()">✕ Clear</button>
+              <button class="btn btn-blue" id="xl-submit-btn" onclick="submitExcelBatch()">📤 Submit All to Sheet</button>
+            </div>
+          </div>
+          <div id="xl-errors" style="display:none;margin-bottom:10px"></div>
+          <div style="overflow-x:auto;max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius)">
+            <table>
+              <thead id="xl-thead" style="position:sticky;top:0;z-index:2"></thead>
+              <tbody id="xl-tbody"></tbody>
+            </table>
+          </div>
+          <div id="xl-submit-progress" style="display:none;margin-top:10px">
+            <div style="background:#f0f2f8;border-radius:20px;height:8px;overflow:hidden;margin-bottom:6px">
+              <div id="xl-progress-bar" style="height:100%;background:var(--blue);border-radius:20px;transition:width .3s;width:0%"></div>
+            </div>
+            <div style="font-size:11px;color:var(--muted)" id="xl-progress-label">Submitting 0 / 0…</div>
+          </div>
+        </div>
+        <div id="xl-empty" style="padding:20px;text-align:center;color:var(--hint);font-size:12px">Upload an Excel file to preview rows before submitting. Use the template for the correct column order.</div>
+      </div>
+
       <!-- Entity & Column Management (admin only) -->
       <div class="entity-admin admin-only">
         <div class="ea-head">🏢 Entity & Column Management <span class="badge badge-violet">Admin only</span></div>
