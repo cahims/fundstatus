@@ -26,7 +26,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 
 /* ── AUTH ── */
-#auth-screen{display:none}
+#auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#0f1729 0%,#1a2a6c 45%,#23074d 100%)}
 .auth-card{background:#fff;border-radius:20px;padding:42px 38px;width:390px;box-shadow:0 32px 80px rgba(0,0,0,.28)}
 .auth-logo{font-size:24px;font-weight:900;color:var(--text);letter-spacing:-.6px;margin-bottom:4px}.auth-logo span{color:var(--blue)}
 .auth-tagline{font-size:11px;color:var(--hint);margin-bottom:28px;letter-spacing:.5px;text-transform:uppercase}
@@ -278,6 +278,7 @@ th.cmp-diff{background:#fff9db;color:var(--amber)}
       <button class="btn btn-ghost btn-sm" onclick="doRefresh()">🔄 Refresh</button>
       <button class="btn btn-ghost btn-sm" onclick="exportExcel()">⬇ Excel</button>
       <button class="btn btn-ghost btn-sm" onclick="showCSVDebug()" title="Debug CSV column mapping">🔍 Debug</button>
+      <button class="btn btn-red btn-sm" onclick="doLogout()">Sign out</button>
     </div>
   </div>
 
@@ -830,35 +831,43 @@ th.cmp-diff{background:#fff9db;color:var(--amber)}
 
     <!-- ═══ USERS ═══ -->
     <div id="tab-users" style="display:none">
-      <div class="info-box">🔓 <strong>Open Access Mode</strong> — anyone with the link can view the dashboard. Add team member names below for the submission log display.</div>
+      <div class="info-box">🔐 <strong>Login Required</strong> — create an account for each team member below. They'll sign in with their own email + password, and all submissions are tracked to their name.</div>
 
       <div class="card" style="padding:20px;margin-bottom:16px">
-        <div style="font-size:14px;font-weight:800;margin-bottom:14px">Add Team Member</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end">
-          <div class="form-group"><label class="form-label">Name</label><input type="text" class="form-input" id="new-name" placeholder="Full name"></div>
-          <div class="form-group"><label class="form-label">Entity Responsible</label>
-            <select class="form-input" id="new-user-entity"><option value="">All / None</option></select>
+        <div style="font-size:14px;font-weight:800;margin-bottom:14px">Create New User</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end">
+          <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="new-email" placeholder="user@company.com"></div>
+          <div class="form-group"><label class="form-label">Display Name</label><input type="text" class="form-input" id="new-name" placeholder="Full name"></div>
+          <div class="form-group"><label class="form-label">Role</label>
+            <select class="form-input" id="new-role"><option value="user">User</option><option value="admin">Admin</option></select>
           </div>
-          <button class="btn btn-blue" onclick="addTeamMember()">+ Add</button>
+          <button class="btn btn-blue" onclick="createUser()">+ Create</button>
         </div>
+        <div class="warn-box" style="margin-top:12px;margin-bottom:0">⚠️ A temporary password is shown once after creation — share it securely. The user should change it on first login (via "Forgot password?" on the login screen).</div>
       </div>
 
       <div class="card">
-        <div class="card-header"><div class="card-title">Team Members</div><div class="card-sub" id="team-count"></div></div>
+        <div class="card-header"><div class="card-title">Team</div><div class="card-sub">Login is managed in Firebase Authentication</div></div>
         <div style="overflow-x:auto">
-          <table><thead><tr><th>#</th><th>Name</th><th>Entity</th><th></th></tr></thead>
-          <tbody id="team-tbody"></tbody></table>
+          <table><thead><tr><th>Email</th><th>Display Name</th><th>Role</th><th>Note</th></tr></thead>
+          <tbody id="users-tbody"><tr><td colspan="4" style="color:var(--muted);text-align:center;padding:14px">Manage in <a href="https://console.firebase.google.com" target="_blank" style="color:var(--blue)">Firebase Console → Authentication</a>. Create users above.</td></tr></tbody>
+        </table>
         </div>
       </div>
 
-      <div class="card" style="padding:20px;margin-top:16px">
-        <div style="font-size:14px;font-weight:800;margin-bottom:6px">Share Dashboard</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Share this file — anyone who opens it will see live data from the Google Sheet.</div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-blue btn-sm" onclick="copyShareLink()">📋 Copy file link</button>
-          <button class="btn btn-ghost btn-sm" onclick="downloadDashboard()">⬇ Download HTML file</button>
+      <div class="overlay" id="temppass-modal">
+        <div class="modal" style="width:360px">
+          <div class="modal-title">✅ User created</div>
+          <div class="modal-sub">Share these credentials securely.</div>
+          <div style="background:#f8f9fc;border-radius:var(--radius);padding:13px;font-size:13px;line-height:2.1">
+            <div><strong>Email:</strong> <span id="tp-email"></span></div>
+            <div><strong>Temp password:</strong> <code id="tp-pass" style="background:#e4e7f3;padding:2px 8px;border-radius:4px"></code></div>
+            <div><strong>Role:</strong> <span id="tp-role"></span></div>
+          </div>
+          <div class="modal-actions"><button class="btn btn-blue" onclick="closeModal('temppass-modal')">Done</button></div>
         </div>
       </div>
+    </div>
     </div>
   </div>
 </div>
@@ -923,6 +932,10 @@ function todayStr(){const d=new Date();return d.toISOString().split('T')[0];}
 
 // ══ STATE ════════════════════════════════════════════════════════════
 let currentUser=null,isAdmin=false;
+// Hoisted early to avoid temporal-dead-zone errors (used by functions called on load)
+let selectedEntities=new Set(); // empty = all selected
+let cmpSelectedEntities=new Set(); // empty = all
+const METRIC_LABELS={total:'Total Balance',available:'Available Funds',immediate:'Immediate Use',investments:'Investments',locked:'Locked / Reserved',bank:'Bank Balance',sweep:'Sweep Deposit',fd:'Fixed Deposits',mf:'Mutual Funds',bonds:'Bonds/Deb',brs:'BRS'};
 let sheetsData={},auditLog=[];
 let dashDate=todayStr();
 let arTimer=null,arCountTimer=null,arCount=5;
@@ -930,21 +943,66 @@ let bChart,dChart,hChart,rChart,alChart,cmpChart2,anChart;
 let ENTITIES=JSON.parse(localStorage.getItem('bb_ent')||'null')||['MAIA','MEIPL','MEOPL','MLS','MLSIPL','NHD','JGD','JVDPL','RDL','NHEPL','NHBPL','NHRPL','NPDLLP','PPEPL','NYPL','SGELLP','SGRPL'];
 let CUSTOM_COLS=JSON.parse(localStorage.getItem('bb_cc')||'[]');
 
-// ══ FIREBASE ══════════════════════════════════════════════════════════
+// ══ FIREBASE AUTH ═══════════════════════════════════════════════════════
 firebase.initializeApp(FIREBASE_CONFIG);
-// ── AUTO-LOGIN: skip login screen, open app directly ──
-currentUser={email:ADMIN_EMAILS[0]||'admin@company.com',displayName:'Admin'};
-isAdmin=true;
-showApp();
+firebase.auth().onAuthStateChanged(u=>{
+  if(u){
+    currentUser=u;
+    isAdmin=ADMIN_EMAILS.includes(u.email.toLowerCase());
+    showApp();
+  }else{
+    showAuth();
+  }
+});
 
 // ── AUTH ──────────────────────────────────────────────────────────────
 function showAuth(){$('auth-screen').style.display='flex';$('app-screen').style.display='none';}
 function showApp(){$('auth-screen').style.display='none';$('app-screen').style.display='block';initApp();ensureSheetColumns();}
 
-function doLogin(){}
-function doLogout(){location.reload();}
-function showAuthMsg(id,msg){}
-function fbErr(c){return'';}
+async function doLogin(){
+  const email=$('login-email').value.trim(),pass=$('login-pass').value,btn=$('login-btn');
+  $('auth-err').style.display='none';
+  if(!email||!pass){showAuthMsg('auth-err','Enter email and password.');return;}
+  btn.disabled=true;btn.textContent='Signing in…';
+  try{
+    const cred=await firebase.auth().signInWithEmailAndPassword(email,pass);
+    if(!cred.user.displayName){
+      const g=email.split('@')[0].replace(/[._]/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+      await cred.user.updateProfile({displayName:g});
+    }
+  }catch(e){
+    showAuthMsg('auth-err',fbErr(e.code));
+    btn.disabled=false;btn.textContent='Sign in';
+  }
+}
+function showForgotModal(){
+  $('forgot-email').value=$('login-email').value;
+  ['forgot-ok','forgot-err'].forEach(id=>{$(id).style.display='none';});
+  openModal('forgot-modal');
+}
+function closeForgotModal(){closeModal('forgot-modal');}
+async function doForgot(){
+  const email=$('forgot-email').value.trim();
+  ['forgot-ok','forgot-err'].forEach(id=>{$(id).style.display='none';});
+  if(!email){showAuthMsg('forgot-err','Enter your email.');return;}
+  try{
+    await firebase.auth().sendPasswordResetEmail(email);
+    showAuthMsg('forgot-ok','✓ Reset link sent — check your inbox.');
+  }catch(e){showAuthMsg('forgot-err',fbErr(e.code));}
+}
+async function doLogout(){stopAR();await firebase.auth().signOut();}
+function showAuthMsg(id,msg){const el=$(id);el.textContent=msg;el.style.display='block';}
+function fbErr(c){
+  return({
+    'auth/user-not-found':'No account with this email.',
+    'auth/wrong-password':'Incorrect password.',
+    'auth/invalid-email':'Invalid email.',
+    'auth/too-many-requests':'Too many attempts — try later.',
+    'auth/invalid-credential':'Incorrect email or password.',
+    'auth/email-already-in-use':'Email already registered.',
+  })[c]||'Something went wrong.';
+}
+// fbErr declared above
 
 
 // ── INIT ──────────────────────────────────────────────────────────────
@@ -969,7 +1027,7 @@ function initApp(){
     document.querySelectorAll('.admin-only').forEach(el=>el.style.display='');
     $('audit-date-filter').value=today;
   }
-  refreshEntitySelects();buildTableHeader();renderTeam();
+  refreshEntitySelects();buildTableHeader();
   doRefresh();
 }
 
@@ -1391,7 +1449,7 @@ function buildTableHeader(){
 }
 
 // ── ENTITY FILTER ──────────────────────────────────────────────────────
-let selectedEntities=new Set(); // empty = all selected
+// selectedEntities declared near top of script (avoids TDZ error)
 
 function getActiveEntities(){
   return selectedEntities.size===0?[...ENTITIES]:[...ENTITIES].filter(e=>selectedEntities.has(e));
@@ -1749,7 +1807,7 @@ function renderDeltaAlert(data){
 
 // ── COMPARISON TAB ────────────────────────────────────────────────────
 // ── COMPARE TAB ────────────────────────────────────────────────────────
-let cmpSelectedEntities=new Set(); // empty = all
+// cmpSelectedEntities declared near top of script (avoids TDZ error)
 let cmpChartType='bar';
 
 function getCmpEntities(){
@@ -1802,7 +1860,7 @@ function getMetricVal(r,metric){
   if(metric==='locked')return(r.reserve||0)+(r.restricted||0)+(r.locked_funds||0);
   return parseFloat(r[metric])||0;
 }
-const METRIC_LABELS={total:'Total Balance',available:'Available Funds',immediate:'Immediate Use',investments:'Investments',locked:'Locked / Reserved',bank:'Bank Balance',sweep:'Sweep Deposit',fd:'Fixed Deposits',mf:'Mutual Funds',bonds:'Bonds/Deb',brs:'BRS'};
+// METRIC_LABELS declared near top of script (avoids TDZ error)
 
 function renderComparison(){
   const d1=$('cmp-date1').value,d2=$('cmp-date2').value;
@@ -2033,57 +2091,21 @@ function downloadAllCharts(){
   showStatus('✓ Downloading 5 chart images…',false);
 }
 
-// ── TEAM MANAGEMENT ────────────────────────────────────────────────────
-let TEAM=JSON.parse(localStorage.getItem('bb_team')||'[]');
-
-function saveTeam(){localStorage.setItem('bb_team',JSON.stringify(TEAM));}
-
-function addTeamMember(){
-  const name=($('new-name')||{}).value?.trim();
-  const entity=($('new-user-entity')||{}).value||'';
-  if(!name){showStatus('Enter a name.',true);return;}
-  TEAM.push({name,entity,added:new Date().toISOString()});
-  saveTeam();
-  if($('new-name'))$('new-name').value='';
-  renderTeam();
-  showStatus('✓ '+name+' added to team.',false);
+// ── USER MANAGEMENT (Firebase) ──────────────────────────────────────────
+async function createUser(){
+  const email=$('new-email').value.trim(),name=$('new-name').value.trim(),role=$('new-role').value;
+  if(!email||!name){showStatus('Email and name required.',true);return;}
+  const tp=Math.random().toString(36).slice(-8)+'A1!';
+  try{
+    const cred=await firebase.auth().createUserWithEmailAndPassword(email,tp);
+    await cred.user.updateProfile({displayName:name});
+    $('tp-email').textContent=email;
+    $('tp-pass').textContent=tp;
+    $('tp-role').textContent=role+(role==='admin'?' — also add to ADMIN_EMAILS in the code':'');
+    openModal('temppass-modal');
+    $('new-email').value='';$('new-name').value='';
+  }catch(e){showStatus('❌ '+fbErr(e.code),true);}
 }
-
-function removeTeamMember(i){
-  TEAM.splice(i,1);saveTeam();renderTeam();
-}
-
-function renderTeam(){
-  const tb=$('team-tbody');if(!tb)return;
-  if($('team-count'))$('team-count').textContent=TEAM.length+' members';
-  // Populate entity dropdown
-  const sel=$('new-user-entity');
-  if(sel){
-    sel.innerHTML='<option value="">All / None</option>'+ENTITIES.map(e=>`<option value="${e}">${e}</option>`).join('');
-  }
-  tb.innerHTML=TEAM.length?TEAM.map((m,i)=>`
-    <tr>
-      <td style="color:var(--muted)">${i+1}</td>
-      <td><strong>${m.name}</strong></td>
-      <td>${m.entity?`<span class="badge badge-blue">${m.entity}</span>`:'<span style="color:var(--hint)">—</span>'}</td>
-      <td><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="removeTeamMember(${i})">Remove</button></td>
-    </tr>`).join('')
-  :'<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--hint)">No team members yet — add names above.</td></tr>';
-}
-
-function copyShareLink(){
-  navigator.clipboard.writeText(window.location.href).then(()=>showStatus('✓ Link copied — share with your team.',false));
-}
-
-function downloadDashboard(){
-  const html=document.documentElement.outerHTML;
-  const a=document.createElement('a');
-  a.href='data:text/html;charset=utf-8,'+encodeURIComponent(html);
-  a.download='BankBalanceHub.html';a.click();
-  showStatus('✓ Dashboard downloaded.',false);
-}
-
-async function createUser(){showStatus('Login removed — use open access.',false);}
 
 // ═══════════════════════════════════════════════════════════════════════
 // ── EXCEL BULK UPLOAD ──────────────────────────────────────────────────
